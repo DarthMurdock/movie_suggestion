@@ -72,6 +72,7 @@ ADMIN_USERNAME=your-username
 ADMIN_SECRET=your-password
 TOTP_SECRET=the-base32-secret-from-above
 TMDB_API_KEY=your-tmdb-api-key
+OMDB_API_KEY=your-omdb-api-key
 DATA_DIR=/var/lib/movie-finder
 PORT=3001
 HOST=127.0.0.1
@@ -82,6 +83,10 @@ sudo chmod 600 /etc/movie-finder/env
 That `chmod 600` matters — it's the only thing protecting your secrets on
 disk, so only root (and the service, via systemd's `EnvironmentFile=`,
 which reads it before dropping privileges) can read it.
+
+`OMDB_API_KEY` (get one free at omdbapi.com/apikey.aspx) is optional —
+it adds IMDb/Rotten Tomatoes/Metacritic scores to each movie's detail
+card. Leave it out and everything else still works, just without ratings.
 
 ## 5. Set up the systemd service
 
@@ -119,14 +124,14 @@ Domain: your new domain. Service: **HTTP**, `localhost:3001`.
 
 1. Edit the config file it points to and add a new ingress rule *before*
    the catch-all line (order matters — first match wins):
-```yaml
+   ```yaml
    ingress:
      - hostname: your-existing-site.com
        service: http://localhost:80
      - hostname: your-new-domain.com
        service: http://localhost:3001
      - service: http_status:404
-```
+   ```
 2. Restart it: `sudo systemctl restart cloudflared`
 3. Add the DNS record **directly in the dashboard** — go to
    **your-new-domain.com → DNS → Records → Add record**: type **CNAME**,

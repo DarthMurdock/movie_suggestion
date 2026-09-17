@@ -26,23 +26,23 @@ self-hosted Node server.
 ## How it's built
 
 - No framework, no build step — plain HTML/CSS/JS, static files served
-  as-is by nginx.
+  as-is by `server.js` itself.
 - **`data/movies.json`** — ~9,800 movies (title, year, genre, overview,
-  popularity), enriched with runtime, cast, and poster URLs for a subset
-  sourced from a secondary TMDB export. See `calendar-engine.js` and
-  `app.js` for how matching/filtering works.
+  popularity), enriched with runtime, cast, director, and poster URLs for
+  a subset sourced from a secondary TMDB export. See `calendar-engine.js`
+  and `app.js` for how matching/filtering works.
 - **`server.js`** — a single Node process (no external dependencies —
-  just the built-in `http`, `fs`, and `crypto` modules) serving two
-  routes:
+  just the built-in `http`, `fs`, and `crypto` modules) that serves the
+  static files directly *and* two API routes:
   - `/api/calendar-rules` — reads/writes the calendar's theme rules and
     admin overrides, stored as a JSON file on disk. Publishing requires a
     username, password, and a valid TOTP code (RFC 6238).
   - `/api/movie-details` — proxies TMDB's search and watch-providers
     APIs for a given title/year, caching results on disk for 30 days so
     repeat lookups don't re-hit the API.
-- Runs as a systemd service behind nginx (which serves the static files
-  directly and proxies just those two routes to Node), exposed to the
-  internet via Cloudflare Tunnel — no ports opened on the router.
+- Runs as a systemd service, exposed to the internet via Cloudflare
+  Tunnel — no ports opened on the router, no nginx or other reverse proxy
+  in front of it.
 - Both the calendar and admin pages fall back gracefully to the bundled
   `data/calendar-rules.json` if `server.js` isn't reachable.
 
@@ -50,19 +50,19 @@ self-hosted Node server.
 
 ```bash
 DATA_DIR=./local-data PORT=3001 \
-ADMIN_USERNAME=you ADMIN_SECRET=devpassword TOTP_SECRET=your-totp-secret TMDB_API_KEY=your-key \
+ADMIN_USERNAME=you ADMIN_SECRET=devpassword TOTP_SECRET=your-totp-secret TMDB_API_KEY=your-key OMDB_API_KEY=your-omdb-key \
 node server.js
 ```
 
-Then serve the static files however you like (e.g. `python3 -m http.server`
-in a separate terminal) and point `/api/*` requests at `localhost:3001`, or
-just use a local nginx config that mirrors `deploy/nginx-movie-finder.conf`.
+Then visit `http://localhost:3001` — it serves everything itself, static
+files included, no separate web server needed.
 
 See **[DEPLOY.md](./DEPLOY.md)** for the full self-hosting walkthrough —
-system user setup, systemd service, nginx config, and pointing a
-Cloudflare Tunnel at it.
+system user setup, systemd service, and pointing a Cloudflare Tunnel at it.
 
 ## Data attribution
 
 This product uses the TMDB API but is not endorsed or certified by
-[TMDB](https://www.themoviedb.org).
+[TMDB](https://www.themoviedb.org). IMDb, Rotten Tomatoes, and Metacritic
+scores come from the [OMDb API](https://www.omdbapi.com) (non-commercial
+use only, per their CC BY-NC 4.0 license).

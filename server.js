@@ -225,12 +225,44 @@ async function handleMovieDetails(req, res, query) {
         buy: simplifyProviders(regionProviders.buy),
       },
       watchLink: regionProviders.link || null,
+      ratings: await fetchOmdbRatings(title, year), // null if OMDB_API_KEY unset or lookup fails — never blocks the rest
     };
 
     await writeCache(cacheKey, { fetchedAt: Date.now(), data });
     return sendJson(res, 200, data);
   } catch (err) {
     return sendJson(res, 502, { error: `TMDB lookup failed: ${err.message}` });
+  }
+}
+
+// OMDb ratings (IMDb, Rotten Tomatoes, Metacritic) — kept separate from the
+// TMDB flow above on purpose: OMDb is a much smaller, single-person-run
+// service, so a hiccup there shouldn't take down the overview/streaming
+// info that TMDB already gave us.
+async function fetchOmdbRatings(title, year) {
+  const omdbKey = process.env.OMDB_API_KEY;
+  if (!omdbKey) return null;
+
+  try {
+    const url = `https://www.omdbapi.com/?apikey=${omdbKey}&t=${encodeURIComponent(title)}&y=${year}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.Response !== "True" || !Array.isArray(json.Ratings)) return null;
+
+    const bySource = {};
+    for (const r of json.Ratings) bySource[r.Source] = r.Value;
+
+    const ratings = {
+      imdb: bySource["Internet Movie Database"] || null,
+      rottenTomatoes: bySource["Rotten Tomatoes"] || null,
+      metacritic: bySource["Metacritic"] || null,
+    };
+    // If literally none of the three came back, treat it the same as no data.
+    if (!ratings.imdb && !ratings.rottenTomatoes && !ratings.metacritic) return null;
+    return ratings;
+  } catch (err) {
+    return null;
   }
 }
 

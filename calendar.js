@@ -158,11 +158,12 @@
       }
     }
 
+    el("detail-ratings-row").hidden = true;
     el("detail-watch-providers").hidden = true;
     fetchLiveDetails(result.movie);
   }
 
-  /* ---------- live TMDB details (overview + watch providers) ---------- */
+  /* ---------- live TMDB details (overview + ratings + watch providers) ---------- */
   async function fetchLiveDetails(movie) {
     try {
       const res = await fetch(`/api/movie-details?title=${encodeURIComponent(movie.t)}&year=${movie.y}`);
@@ -171,10 +172,31 @@
       if (!data.found) return;
 
       if (data.overview) el("detail-overview").textContent = data.overview;
+      renderRatings(data.ratings, "detail-ratings-row");
       renderWatchProviders(data.watchProviders, "detail-watch-providers", "detail-watch-badges");
     } catch (err) {
       // silently keep the static bundled overview
     }
+  }
+
+  function renderRatings(ratings, rowId) {
+    const row = el(rowId);
+    if (!ratings) { row.hidden = true; return; }
+
+    const badges = [];
+    if (ratings.imdb) badges.push(["IMDb", ratings.imdb]);
+    if (ratings.rottenTomatoes) badges.push(["RT", ratings.rottenTomatoes]);
+    if (ratings.metacritic) badges.push(["Metacritic", ratings.metacritic]);
+
+    if (badges.length === 0) { row.hidden = true; return; }
+
+    row.innerHTML = badges.map(([source, value]) => `
+      <span class="rating-badge">
+        <span class="rating-badge-source">${source}</span>
+        <span class="rating-badge-value">${escapeHtml(value)}</span>
+      </span>
+    `).join("");
+    row.hidden = false;
   }
 
   function renderWatchProviders(providers, sectionId, badgesId) {

@@ -295,10 +295,31 @@
       if (!data.found) return;
 
       if (data.overview) el("ticket-overview").textContent = data.overview;
+      renderRatings(data.ratings, "ratings-row");
       renderWatchProviders(data.watchProviders, "watch-providers", "watch-badges");
     } catch (err) {
       // silently keep the static bundled overview
     }
+  }
+
+  function renderRatings(ratings, rowId) {
+    const row = el(rowId);
+    if (!ratings) { row.hidden = true; return; }
+
+    const badges = [];
+    if (ratings.imdb) badges.push(["IMDb", ratings.imdb]);
+    if (ratings.rottenTomatoes) badges.push(["RT", ratings.rottenTomatoes]);
+    if (ratings.metacritic) badges.push(["Metacritic", ratings.metacritic]);
+
+    if (badges.length === 0) { row.hidden = true; return; }
+
+    row.innerHTML = badges.map(([source, value]) => `
+      <span class="rating-badge">
+        <span class="rating-badge-source">${source}</span>
+        <span class="rating-badge-value">${escapeHtml(value)}</span>
+      </span>
+    `).join("");
+    row.hidden = false;
   }
 
   function renderWatchProviders(providers, sectionId, badgesId) {
@@ -333,6 +354,7 @@
     el("ticket-meta").textContent = `${movie.y}` + (movie.rt ? ` · ${movie.rt} min` : "");
     el("ticket-tags").innerHTML = movie.g.map((g) => `<span class="tag">${g}</span>`).join("");
     el("ticket-overview").textContent = movie.o || "No synopsis available.";
+    el("ratings-row").hidden = true;
     el("watch-providers").hidden = true;
 
     const posterEl = el("ticket-poster");
