@@ -186,53 +186,81 @@ async function handleMovieDetails(req, res, query) {
   const year = parseInt(query.get("year"), 10);
   if (!title || !year) return sendJson(res, 400, { error: "Both 'title' and 'year' query params are required." });
 
-  const cacheKey = `moviedetails:${title.toLowerCase()}|${year}`;
-
   try {
-    const cached = await readCache(cacheKey);
-    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-      return sendJson(res, 200, cached.data);
-    }
+    const tmdbData = await getTmdbData(title, year, apiKey);
+    if (!tmdbData.found) return sendJson(res, 200, tmdbData);
 
-    const searchUrl = `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(title)}&year=${year}`;
-    const searchRes = await fetch(searchUrl);
-    if (!searchRes.ok) throw new Error(`TMDB search failed: ${searchRes.status}`);
-    const searchData = await searchRes.json();
-
-    const match = (searchData.results || [])[0];
-    if (!match) {
-      const empty = { found: false };
-      await writeCache(cacheKey, { fetchedAt: Date.now(), data: empty });
-      return sendJson(res, 200, empty);
-    }
-
-    const detailsUrl = `${TMDB_BASE}/movie/${match.id}?api_key=${apiKey}&append_to_response=watch/providers`;
-    const detailsRes = await fetch(detailsUrl);
-    if (!detailsRes.ok) throw new Error(`TMDB details failed: ${detailsRes.status}`);
-    const details = await detailsRes.json();
-
-    const regionProviders = (details["watch/providers"] && details["watch/providers"].results && details["watch/providers"].results[WATCH_REGION]) || {};
-    const simplifyProviders = (list) =>
-      (list || []).map((p) => ({ name: p.provider_name, logo: p.logo_path ? `https://image.tmdb.org/t/p/w45${p.logo_path}` : null }));
-
-    const data = {
-      found: true,
-      tmdbId: match.id,
-      overview: details.overview || "",
-      watchProviders: {
-        flatrate: simplifyProviders(regionProviders.flatrate),
-        rent: simplifyProviders(regionProviders.rent),
-        buy: simplifyProviders(regionProviders.buy),
-      },
-      watchLink: regionProviders.link || null,
-      ratings: await fetchOmdbRatings(title, year), // null if OMDB_API_KEY unset or lookup fails — never blocks the rest
-    };
-
-    await writeCache(cacheKey, { fetchedAt: Date.now(), data });
-    return sendJson(res, 200, data);
+    // Ratings are cached separately and much longer-lived than the TMDB data
+    // above (see getRatingsCached) — a score from OMDb rarely changes, unlike
+    // streaming availability, so there's no reason to tie its freshness to
+    // the same 30-day cycle as watch providers.
+    const ratings = await getRatingsCached(title, year);
+    return sendJson(res, 200, { ...tmdbData, ratings });
   } catch (err) {
     return sendJson(res, 502, { error: `TMDB lookup failed: ${err.message}` });
   }
+}
+
+async function getTmdbData(title, year, apiKey) {
+  const cacheKey = `moviedetails:${title.toLowerCase()}|${year}`;
+  const cached = await readCache(cacheKey);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const searchUrl = `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(title)}&year=${year}`;
+  const searchRes = await fetch(searchUrl);
+  if (!searchRes.ok) throw new Error(`TMDB search failed: ${searchRes.status}`);
+  const searchData = await searchRes.json();
+
+  const match = (searchData.results || [])[0];
+  if (!match) {
+    const empty = { found: false };
+    await writeCache(cacheKey, { fetchedAt: Date.now(), data: empty });
+    return empty;
+  }
+
+  const detailsUrl = `${TMDB_BASE}/movie/${match.id}?api_key=${apiKey}&append_to_response=watch/providers`;
+  const detailsRes = await fetch(detailsUrl);
+  if (!detailsRes.ok) throw new Error(`TMDB details failed: ${detailsRes.status}`);
+  const details = await detailsRes.json();
+
+  const regionProviders = (details["watch/providers"] && details["watch/providers"].results && details["watch/providers"].results[WATCH_REGION]) || {};
+  const simplifyProviders = (list) =>
+    (list || []).map((p) => ({ name: p.provider_name, logo: p.logo_path ? `https://image.tmdb.org/t/p/w45${p.logo_path}` : null }));
+
+  const data = {
+    found: true,
+    tmdbId: match.id,
+    overview: details.overview || "",
+    watchProviders: {
+      flatrate: simplifyProviders(regionProviders.flatrate),
+      rent: simplifyProviders(regionProviders.rent),
+      buy: simplifyProviders(regionProviders.buy),
+    },
+    watchLink: regionProviders.link || null,
+  };
+
+  await writeCache(cacheKey, { fetchedAt: Date.now(), data });
+  return data;
+}
+
+// Ratings, once found, are cached indefinitely — no re-fetching a score
+// that essentially never changes. A *miss* (OMDb doesn't have it, or the
+// lookup failed) is retried after a week rather than cached forever, in
+// case it was transient or the title just wasn't in OMDb's database yet.
+const RATINGS_RETRY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function getRatingsCached(title, year) {
+  const key = `ratings:${title.toLowerCase()}|${year}`;
+  const cached = await readCache(key);
+  if (cached) {
+    if (cached.data !== null) return cached.data; // found previously — permanent
+    if (Date.now() - cached.fetchedAt < RATINGS_RETRY_TTL_MS) return null; // recent miss — not due for retry yet
+  }
+  const ratings = await fetchOmdbRatings(title, year);
+  await writeCache(key, { fetchedAt: Date.now(), data: ratings });
+  return ratings;
 }
 
 // OMDb ratings (IMDb, Rotten Tomatoes, Metacritic) — kept separate from the
