@@ -1,0 +1,164 @@
+/* ========================================================
+   Seasonal month themes — override the base tokens while
+   browsing these months on the calendar page
+   ======================================================== */
+body.theme-oct{
+  --bg: #120a14;
+  --bg-glow: #24122b;
+  --surface: #1c1120;
+  --surface-raised: #26162c;
+  --border: #3d2444;
+  --border-soft: #2c1a33;
+  --gold: #ff8c2e;
+  --gold-dim: #cc6f1f;
+  --red: #7c2d8f;
+  --red-dim: #5c2169;
+}
+
+body.theme-nov{
+  --bg: #140f0a;
+  --bg-glow: #241a10;
+  --surface: #1e1610;
+  --surface-raised: #291e15;
+  --border: #43301e;
+  --border-soft: #302314;
+  --gold: #d98a3d;
+  --gold-dim: #b06f2d;
+  --red: #8c3f2a;
+  --red-dim: #6b2f1f;
+}
+
+body.theme-dec{
+  --bg: #0a1116;
+  --bg-glow: #10202b;
+  --surface: #101a22;
+  --surface-raised: #16242e;
+  --border: #234254;
+  --border-soft: #182c38;
+  --gold: #7fd0e8;
+  --gold-dim: #4fa8c4;
+  --red: #1f6b5c;
+  --red-dim: #16564a;
+}
+
+.month-label-icon{ margin-right: 0.35rem; }
+
+/* ========================================================
+   Month navigator
+   ======================================================== */
+.month-nav{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.month-arrow{
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+.month-arrow:hover{ border-color: var(--gold-dim); color: var(--text); }
+
+.month-label{
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.3rem;
+  margin: 0;
+  min-width: 12ch;
+  text-align: center;
+}
+
+/* ========================================================
+   Grid
+   ======================================================== */
+.weekday-row{
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.day-grid{
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 2.5rem;
+}
+
+.day-cell{
+  aspect-ratio: 1;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  padding: 0;
+}
+.day-cell:hover{ border-color: var(--gold-dim); background: var(--surface-raised); }
+.day-cell.is-empty{ visibility: hidden; cursor: default; }
+
+.day-cell.is-today{
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+
+.day-cell.is-selected{
+  background: var(--gold);
+  color: #1a1509;
+  border-color: var(--gold);
+}
+.day-cell.is-selected .day-theme-dot{ background: #1a1509; }
+
+.day-num{
+  font-weight: 500;
+}
+
+.day-theme-dot{
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.day-cell.is-pin .day-theme-dot,
+.day-cell.is-curated .day-theme-dot{
+  background: var(--gold-dim);
+}
+
+/* ========================================================
+   Day detail
+   ======================================================== */
+.day-detail{ min-height: 8rem; }
+
+.detail-actions{
+  display: flex;
+  justify-content: center;
+  margin-top: 1.25rem;
+}
+
+/* ========================================================
+   Responsive
+   ======================================================== */
+@media (max-width: 480px){
+  .day-num{ font-size: 0.85rem; }
+  .month-label{ font-size: 1.1rem; min-width: auto; }
+}

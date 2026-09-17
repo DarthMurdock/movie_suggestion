@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar Admin — curate picks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="calendar.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="index.html">Finder</a>
+  <span class="site-nav-sep">·</span>
+  <a href="calendar.html">Calendar</a>
+  <span class="site-nav-sep">·</span>
+  <a href="admin.html" class="is-active">Admin</a>
+</nav>
+
+<div class="stage stage-wide">
+
+  <header class="hero">
+    <p class="hero-eyebrow">curate the calendar</p>
+    <h1 class="hero-title">Calendar Admin</h1>
+  </header>
+
+  <!-- AUTH GATE -->
+  <section id="auth-gate" class="auth-gate">
+    <p class="admin-label" for="gate-username">Username</p>
+    <input type="text" id="gate-username" placeholder="Username" autocomplete="off">
+    <p class="admin-label" for="gate-secret">Password</p>
+    <input type="password" id="gate-secret" placeholder="Password" autocomplete="off">
+    <p class="admin-label" for="gate-totp">Authenticator code</p>
+    <input type="text" id="gate-totp" placeholder="6-digit code" autocomplete="off" inputmode="numeric" maxlength="6">
+    <button id="gate-submit-btn" class="btn-primary">Unlock</button>
+    <p id="gate-error" class="gate-error" hidden></p>
+  </section>
+
+  <!-- EVERYTHING BELOW IS HIDDEN UNTIL THE PASSWORD IS VERIFIED -->
+  <div id="admin-content" hidden>
+
+  <div id="admin-note" class="admin-note">
+    <p id="admin-note-text">Checking connection to live storage…</p>
+  </div>
+
+  <!-- ADD / EDIT AN OVERRIDE -->
+  <section class="admin-panel">
+    <h2 class="panel-title-sm">Customize a day</h2>
+
+    <div class="admin-form-row">
+      <label class="admin-label" for="override-date">Date</label>
+      <input type="date" id="override-date">
+    </div>
+
+    <div class="admin-form-row">
+      <label class="admin-label">Repeats</label>
+      <div class="radio-group">
+        <label><input type="radio" name="recur" value="year" checked> Every year (same month/day)</label>
+        <label><input type="radio" name="recur" value="once"> Just this specific date</label>
+      </div>
+    </div>
+
+    <div class="admin-form-row">
+      <label class="admin-label">
+        <input type="checkbox" id="label-only-toggle">
+        Just rename this day — no specific movie, keep the normal daily pick
+      </label>
+    </div>
+
+    <div id="movie-picker-block">
+      <div class="admin-form-row">
+        <label class="admin-label" for="movie-search">Movie</label>
+        <div class="search-wrap">
+          <input type="text" id="movie-search" placeholder="Search by title…" autocomplete="off">
+          <div id="search-results" class="search-results" hidden></div>
+        </div>
+      </div>
+
+      <div id="selected-movie" class="selected-movie" hidden>
+        Selected: <strong id="selected-movie-label"></strong>
+        <button type="button" id="clear-selected" class="text-btn">clear</button>
+      </div>
+    </div>
+
+    <div class="admin-form-row">
+      <label class="admin-label" for="override-label">Label</label>
+      <input type="text" id="override-label" placeholder="e.g. Groundhog Day">
+    </div>
+
+    <button id="add-override-btn" class="btn-primary" disabled>Add to calendar</button>
+  </section>
+
+  <!-- CURRENT OVERRIDES -->
+  <section class="admin-panel">
+    <h2 class="panel-title-sm">Current pinned days</h2>
+    <ul id="override-list" class="override-list"></ul>
+    <p id="override-empty" class="state-msg-sub" style="text-align:left;">No pinned days yet — the calendar is running purely on themes.</p>
+  </section>
+
+  <!-- BUILT-IN THEME RULES (reference) -->
+  <section class="admin-panel">
+    <h2 class="panel-title-sm">Built-in theme rules</h2>
+    <ul id="rule-list" class="rule-list"></ul>
+  </section>
+
+  <div id="save-status" class="save-status" hidden></div>
+  <button id="publish-btn" class="btn-primary publish-btn">Save &amp; publish live</button>
+  <button id="download-btn" class="text-btn download-btn">or download a local backup file</button>
+
+  </div>
+
+</div>
+
+<script src="calendar-engine.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

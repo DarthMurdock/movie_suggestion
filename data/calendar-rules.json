@@ -1,0 +1,129 @@
+{
+  "rules": [
+    {
+      "id": "new-beginnings",
+      "label": "New Beginnings",
+      "anchor": { "type": "fixed", "month": 1, "day": 1 },
+      "before": 0, "after": 2,
+      "match": { "type": "tag", "keywords": ["new year", "resolution", "fresh start", "second chance", "new beginning"] }
+    },
+    {
+      "id": "mlk-black-cinema",
+      "label": "MLK Day — Black Cinema",
+      "anchor": { "type": "nth-weekday", "month": 1, "weekday": 1, "n": 3 },
+      "before": 1, "after": 1,
+      "match": { "type": "curated", "titles": [
+        { "title": "Hidden Figures", "year": 2016 },
+        { "title": "Remember the Titans", "year": 2000 },
+        { "title": "42", "year": 2013 },
+        { "title": "Selma", "year": 2014 }
+      ]}
+    },
+    {
+      "id": "groundhog-day",
+      "label": "Groundhog Day",
+      "anchor": { "type": "fixed", "month": 2, "day": 2 },
+      "before": 0, "after": 0,
+      "match": { "type": "pin", "title": "Groundhog Day", "year": 1993 }
+    },
+    {
+      "id": "romance-week",
+      "label": "Romance Week",
+      "anchor": { "type": "fixed", "month": 2, "day": 14 },
+      "before": 6, "after": 0,
+      "match": { "type": "tag", "genres": ["Romance"] }
+    },
+    {
+      "id": "presidents-day",
+      "label": "Presidents' Day",
+      "anchor": { "type": "nth-weekday", "month": 2, "weekday": 1, "n": 3 },
+      "before": 0, "after": 0,
+      "match": { "type": "tag", "keywords": ["president", "white house", "commander in chief", "election night"] }
+    },
+    {
+      "id": "st-patricks",
+      "label": "St. Patrick's Day",
+      "anchor": { "type": "fixed", "month": 3, "day": 17 },
+      "before": 0, "after": 0,
+      "match": { "type": "tag", "keywords": ["ireland", "irish", "dublin", "leprechaun"] }
+    },
+    {
+      "id": "cinco-de-mayo",
+      "label": "Cinco de Mayo",
+      "anchor": { "type": "fixed", "month": 5, "day": 5 },
+      "before": 0, "after": 0,
+      "match": { "type": "curated", "titles": [
+        { "title": "Coco", "year": 2017 },
+        { "title": "Instructions Not Included", "year": 2013 },
+        { "title": "McFarland, USA", "year": 2015 }
+      ]}
+    },
+    {
+      "id": "mothers-day",
+      "label": "Mother's Day",
+      "anchor": { "type": "nth-weekday", "month": 5, "weekday": 0, "n": 2 },
+      "before": 0, "after": 0,
+      "match": { "type": "tag", "keywords": ["mother", "her mom", "his mother", "single mother"] }
+    },
+    {
+      "id": "memorial-day",
+      "label": "Memorial Day",
+      "anchor": { "type": "last-weekday", "month": 5, "weekday": 1 },
+      "before": 0, "after": 0,
+      "match": { "type": "tag", "genres": ["War"] }
+    },
+    {
+      "id": "fathers-day",
+      "label": "Father's Day — Classic 80s Action",
+      "anchor": { "type": "nth-weekday", "month": 6, "weekday": 0, "n": 3 },
+      "before": 0, "after": 0,
+      "match": { "type": "tag", "genres": ["Action"], "decade": 1980 }
+    },
+    {
+      "id": "american-week",
+      "label": "Classic American Films",
+      "anchor": { "type": "fixed", "month": 7, "day": 4 },
+      "before": 6, "after": 0,
+      "match": { "type": "tag", "keywords": ["america", "american dream", "united states", "patriot"] }
+    },
+    {
+      "id": "labor-day",
+      "label": "Labor Day — Working Class",
+      "anchor": { "type": "nth-weekday", "month": 9, "weekday": 1, "n": 1 },
+      "before": 0, "after": 0,
+      "match": { "type": "tag", "keywords": ["factory", "union", "working class", "blue-collar", "laborer", "assembly line"] }
+    },
+    {
+      "id": "horror-month",
+      "label": "Horror Month",
+      "monthOnly": 10,
+      "match": { "type": "tag", "genres": ["Horror"] }
+    },
+    {
+      "id": "veterans-day",
+      "label": "Veterans Day",
+      "anchor": { "type": "fixed", "month": 11, "day": 11 },
+      "before": 0, "after": 0,
+      "match": { "type": "tag", "genres": ["War"], "keywords": ["veteran", "soldier"] }
+    },
+    {
+      "id": "thanksgiving",
+      "label": "Thanksgiving",
+      "anchor": { "type": "nth-weekday", "month": 11, "weekday": 4, "n": 4 },
+      "before": 0, "after": 0,
+      "match": { "type": "tag", "keywords": ["thanksgiving", "family dinner", "family reunion"] }
+    },
+    {
+      "id": "holiday-season",
+      "label": "Holiday / Christmas",
+      "fixedRange": { "startMonth": 11, "startDay": 26, "endMonth": 12, "endDay": 31 },
+      "match": { "type": "tag", "keywords": ["christmas", "holiday season", "santa", "north pole"] }
+    }
+  ],
+  "grabBag": {
+    "label": "Grab Bag",
+    "weekdayRuntimeCap": 90,
+    "weekdaysCapped": [1, 2, 3, 4]
+  },
+  "overrides": {}
+}

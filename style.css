@@ -1,0 +1,454 @@
+/* ========================================================
+   Tokens
+   ======================================================== */
+:root{
+  --bg: #15120f;
+  --bg-glow: #1c1712;
+  --surface: #1f1a15;
+  --surface-raised: #272019;
+  --border: #3a3025;
+  --border-soft: #2a2319;
+
+  --gold: #e8b94a;
+  --gold-dim: #b8903a;
+  --red: #a8433f;
+  --red-dim: #7c332f;
+
+  --text: #f3ecdf;
+  --text-muted: #a89c88;
+  --text-faint: #6f6553;
+
+  --serif: "Fraunces", Georgia, serif;
+  --sans: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+
+  --radius: 3px;
+}
+
+*{ box-sizing: border-box; }
+html{ color-scheme: dark; }
+
+body{
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 900px 500px at 50% -10%, var(--bg-glow), transparent),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+:focus-visible{
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* ========================================================
+   Site nav (shared across pages)
+   ======================================================== */
+.site-nav{
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 1.25rem 0 0;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+}
+.site-nav a{
+  color: var(--text-faint);
+  text-decoration: none;
+  padding: 0.3rem 0.2rem;
+}
+.site-nav a:hover{ color: var(--text-muted); }
+.site-nav a.is-active{
+  color: var(--gold);
+  border-bottom: 1px solid var(--gold-dim);
+}
+.site-nav-sep{ color: var(--border); }
+
+.stage-wide{ max-width: 720px; }
+
+/* ========================================================
+   Layout
+   ======================================================== */
+.stage{
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 4rem 1.5rem 6rem;
+}
+
+.hero{
+  text-align: center;
+  margin-bottom: 2.75rem;
+}
+
+.hero-eyebrow{
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  margin: 0 0 0.9rem;
+}
+
+.hero-title{
+  font-family: var(--serif);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: clamp(1.9rem, 5vw, 2.75rem);
+  line-height: 1.15;
+  margin: 0;
+}
+
+/* ========================================================
+   Tag zone
+   ======================================================== */
+.tag-zone{
+  margin-bottom: 2.5rem;
+}
+
+.tag-form{
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+#tag-input{
+  flex: 1;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem;
+}
+#tag-input::placeholder{ color: var(--text-faint); }
+#tag-input:focus{ border-color: var(--gold-dim); outline: none; }
+
+.tag-hint{
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  margin: 0 0 1.1rem;
+  line-height: 1.5;
+}
+.tag-hint em{ color: var(--text-muted); font-style: normal; }
+
+.btn-primary{
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a1509;
+  background: var(--gold);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.8rem 1.4rem;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.btn-primary:hover{ background: #f2c869; }
+.btn-primary:active{ transform: scale(0.98); }
+
+.tag-list{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.4rem;
+}
+
+.tag-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--gold);
+  color: #1a1509;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: 999px;
+  padding: 0.4rem 0.5rem 0.4rem 0.9rem;
+}
+
+.tag-chip .tag-kind{
+  font-weight: 500;
+  opacity: 0.65;
+  font-size: 0.72rem;
+  margin-right: -0.1rem;
+}
+
+.tag-chip button{
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  border: none;
+  background: rgba(26,21,9,0.18);
+  color: #1a1509;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tag-chip button:hover{ background: rgba(26,21,9,0.3); }
+
+/* ========================================================
+   Results zone
+   ======================================================== */
+.results-zone{
+  border-top: 1px solid var(--border-soft);
+  padding-top: 1.75rem;
+}
+
+.match-count{
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0 0 1.25rem;
+  min-height: 1.2em;
+}
+
+.state-msg{
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2.5rem 1rem;
+  font-size: 0.95rem;
+}
+.state-msg p{ margin: 0 0 0.4rem; }
+.state-msg-sub{ color: var(--text-faint); font-size: 0.85rem; }
+
+.movie-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.movie-row{
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: var(--sans);
+  color: var(--text);
+}
+.movie-row:hover{
+  border-color: var(--gold-dim);
+  background: var(--surface-raised);
+}
+
+.movie-row-poster{
+  width: 2.4rem;
+  height: 3.4rem;
+  flex-shrink: 0;
+  border-radius: 2px;
+  object-fit: cover;
+  background: var(--surface-raised);
+}
+.movie-row-poster-blank{
+  display: block;
+  border: 1px dashed var(--border-soft);
+}
+
+.movie-row-title{
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.02rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.movie-row-year{
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.movie-list-more{
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  padding: 0.75rem 0 0;
+}
+
+/* ========================================================
+   Ticket (picked result)
+   ======================================================== */
+.panel-picked{
+  margin-top: 1rem;
+}
+
+.ticket{
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 20px 40px -20px rgba(0,0,0,0.6);
+}
+
+.ticket-poster{
+  width: 220px;
+  height: 330px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  object-fit: cover;
+  background: var(--surface-raised);
+  display: block;
+}
+
+.ticket-main{
+  flex: 1;
+  padding: 2rem 1.75rem;
+  min-width: 0;
+}
+
+.ticket-kicker{
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--gold-dim);
+  margin: 0 0 0.6rem;
+}
+
+.ticket-title{
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.6rem;
+  line-height: 1.2;
+  margin: 0 0 0.4rem;
+}
+
+.ticket-meta{
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0 0 0.9rem;
+}
+
+.ticket-tags{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.1rem;
+}
+
+.tag{
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+}
+
+.ticket-overview{
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.watch-providers{
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+.watch-label{
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  margin: 0 0 0.6rem;
+}
+
+.watch-row{
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.watch-row:last-child{ margin-bottom: 0; }
+
+.watch-row-label{
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  width: 3.4rem;
+  flex-shrink: 0;
+}
+
+.watch-row-providers{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.watch-logo{
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: block;
+}
+
+.watch-name-only{
+  font-size: 0.78rem;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+}
+
+.picked-actions{
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+}
+
+.text-btn{
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.4rem;
+}
+.text-btn:hover{ color: var(--text-muted); }
+
+/* ========================================================
+   Site footer
+   ======================================================== */
+.site-footer{
+  text-align: center;
+  padding: 2rem 1.5rem 3rem;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+.site-footer a{ color: var(--text-muted); }
+.site-footer a:hover{ color: var(--gold-dim); }
+
+/* ========================================================
+   Responsive
+   ======================================================== */
+@media (max-width: 480px){
+  .stage{ padding: 3rem 1.1rem 4rem; }
+  .tag-form{ flex-direction: column; }
+  .ticket{ flex-direction: column; }
+  .ticket-poster{ width: 100%; height: auto; }
+  .movie-row-title{ white-space: normal; }
+}

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movie Calendar — a pick for every day</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="calendar.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="index.html">Finder</a>
+  <span class="site-nav-sep">·</span>
+  <a href="calendar.html" class="is-active">Calendar</a>
+</nav>
+
+<div class="stage stage-wide">
+
+  <header class="hero">
+    <p class="hero-eyebrow">a movie for every day of the year</p>
+    <h1 class="hero-title">The Movie Calendar</h1>
+  </header>
+
+  <div class="month-nav">
+    <button id="prev-month" class="month-arrow" aria-label="Previous month">&larr;</button>
+    <h2 id="month-label" class="month-label"></h2>
+    <button id="next-month" class="month-arrow" aria-label="Next month">&rarr;</button>
+  </div>
+
+  <div class="weekday-row">
+    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+  </div>
+
+  <div id="day-grid" class="day-grid"></div>
+
+  <section id="day-detail" class="day-detail">
+    <div id="detail-loading" class="state-msg" hidden>Loading…</div>
+
+    <article id="detail-ticket" class="ticket" hidden>
+      <img id="detail-poster" class="ticket-poster" src="" alt="" hidden>
+      <div class="ticket-main">
+        <p class="ticket-kicker" id="detail-kicker"></p>
+        <h2 class="ticket-title" id="detail-title"></h2>
+        <p class="ticket-meta" id="detail-meta"></p>
+        <div class="ticket-tags" id="detail-tags"></div>
+        <p class="ticket-overview" id="detail-overview"></p>
+        <div id="detail-watch-providers" class="watch-providers" hidden>
+          <p class="watch-label">Where to watch</p>
+          <div id="detail-watch-badges" class="watch-badges"></div>
+        </div>
+      </div>
+    </article>
+
+    <div id="detail-empty" class="state-msg" hidden>
+      <p>No match found for this day's theme yet.</p>
+    </div>
+
+    <div class="detail-actions">
+      <button id="shuffle-btn" class="text-btn">&#8635; try another for this day</button>
+    </div>
+  </section>
+
+</div>
+
+<footer class="site-footer">
+  <p>This product uses the TMDB API but is not endorsed or certified by <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>.</p>
+</footer>
+
+<script src="calendar-engine.js"></script>
+<script src="calendar.js"></script>
+</body>
+</html>

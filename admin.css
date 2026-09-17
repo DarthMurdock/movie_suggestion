@@ -1,0 +1,191 @@
+.auth-gate{
+  max-width: 320px;
+  margin: 3rem auto 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.auth-gate .admin-label{
+  margin-bottom: 0;
+}
+
+.auth-gate input[type="password"],
+.auth-gate input[type="text"]{
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 0.9rem;
+}
+.auth-gate input[type="password"]:focus,
+.auth-gate input[type="text"]:focus{ border-color: var(--gold-dim); outline: none; }
+
+.gate-error{
+  color: var(--red);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.admin-note{
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--gold-dim);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 2rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.admin-note strong{ color: var(--text); }
+.admin-note code{
+  background: var(--surface-raised);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+
+.admin-panel{
+  margin-bottom: 2.5rem;
+}
+
+.panel-title-sm{
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.15rem;
+  margin: 0 0 1rem;
+}
+
+.admin-form-row{
+  margin-bottom: 1rem;
+}
+
+.admin-label{
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.admin-form-row input[type="date"],
+.admin-form-row input[type="text"]{
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem 0.85rem;
+}
+.admin-form-row input:focus{ border-color: var(--gold-dim); outline: none; }
+
+.radio-group{
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+.radio-group label{ display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+
+.search-wrap{ position: relative; }
+
+.search-results{
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.search-result-item{
+  padding: 0.6rem 0.85rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.search-result-item:hover{ background: var(--surface); }
+.search-result-item .yr{ color: var(--text-faint); }
+
+.selected-movie{
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.selected-movie strong{ color: var(--gold); }
+
+.override-list, .rule-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.override-row, .rule-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.87rem;
+}
+
+.override-row-main, .rule-row-main{ display: flex; flex-direction: column; gap: 0.15rem; }
+.override-row-date, .rule-row-window{ color: var(--text-faint); font-size: 0.78rem; }
+.override-row-title{ color: var(--text); }
+.rule-row-label{ color: var(--text); font-weight: 500; }
+
+.remove-btn{
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  border-radius: 50%;
+  width: 1.8rem;
+  height: 1.8rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.remove-btn:hover{ border-color: var(--red-dim); color: var(--red); }
+
+.download-btn{
+  display: block;
+  margin: 0.75rem auto 0;
+}
+
+.publish-btn{
+  display: block;
+  margin: 2rem auto 0;
+}
+
+.save-status{
+  text-align: center;
+  font-size: 0.85rem;
+  margin-top: 1.5rem;
+}
+.save-status.is-success{ color: var(--gold); }
+.save-status.is-error{ color: var(--red); }
+
+.admin-note.is-live{ border-left-color: var(--gold); }
+.admin-note.is-live strong{ color: var(--gold); }
+.admin-note.is-fallback{ border-left-color: var(--red-dim); }

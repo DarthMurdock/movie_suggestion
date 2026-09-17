@@ -1,0 +1,20 @@
+[Unit]
+Description=Movie Finder API server
+After=network.target
+
+[Service]
+Type=simple
+User=movie-finder
+Group=movie-finder
+WorkingDirectory=/var/www/movie-finder
+EnvironmentFile=/etc/movie-finder/env
+ExecStart=/usr/bin/node /var/www/movie-finder/server.js
+Restart=on-failure
+RestartSec=5
+
+# Only this directory needs to be writable — everything else the service
+# touches (the static files) is read-only to it.
+ReadWritePaths=/var/lib/movie-finder
+
+[Install]
+WantedBy=multi-user.target
