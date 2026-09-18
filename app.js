@@ -7,9 +7,11 @@
   const state = {
     allMovies: [],
     genres: [],
-    tags: [], // { raw, type: 'decade'|'genre'|'actor'|'director'|'text', value, words, label }
+    tags: [], // { raw, type: 'decade'|'genre'|'actor'|'director'|'streaming'|'text', value, words, label }
     actorIndex: new Map(), // lowercase name -> canonical name
     directorIndex: new Map(), // lowercase name -> canonical name
+    providerIndex: new Map(), // lowercase provider name -> canonical name
+    watchProviders: {}, // "title|year" (lowercase title) -> array of provider names
   };
 
   const el = (id) => document.getElementById(id);
@@ -86,6 +88,16 @@
       state.genres = manifest.genres;
       state.allMovies = await moviesRes.json();
 
+      // Optional — only present once the monthly refresh job has run at
+      // least once. Missing entirely just means "streaming" tags won't be
+      // recognized yet; everything else works the same either way.
+      try {
+        const providersRes = await fetch(`${DATA_ROOT}/watch-providers.json`);
+        if (providersRes.ok) state.watchProviders = await providersRes.json();
+      } catch (err) {
+        // no watch-providers.json yet — fine, just skip it
+      }
+
       for (const m of state.allMovies) {
         if (m.c) {
           for (const name of m.c) {
@@ -96,6 +108,11 @@
           for (const name of m.d) {
             if (!state.directorIndex.has(name.toLowerCase())) state.directorIndex.set(name.toLowerCase(), name);
           }
+        }
+      }
+      for (const providers of Object.values(state.watchProviders)) {
+        for (const name of providers) {
+          if (!state.providerIndex.has(name.toLowerCase())) state.providerIndex.set(name.toLowerCase(), name);
         }
       }
 
@@ -148,6 +165,12 @@
       return { raw: text, type: "director", value: directorMatch, label: directorMatch };
     }
 
+    // streaming service: exact match against known providers from the monthly refresh
+    const providerMatch = state.providerIndex.get(lower);
+    if (providerMatch) {
+      return { raw: text, type: "streaming", value: providerMatch, label: providerMatch };
+    }
+
     // free text — build one word-group per word (each group = that word plus its
     // synonyms/stem), phrase must satisfy ALL groups (AND), any alternative within
     // a group counts (OR). This is what stops "time travel" from matching on "time"
@@ -192,6 +215,11 @@
     if (tag.type === "director") {
       return !!(movie.d && movie.d.includes(tag.value));
     }
+    if (tag.type === "streaming") {
+      const key = `${movie.t.toLowerCase()}|${movie.y}`;
+      const providers = state.watchProviders[key];
+      return !!(providers && providers.includes(tag.value));
+    }
     // text — search title, overview, cast/director names, and TMDB keyword tags together
     const hay = `${movie.t} ${movie.o} ${movie.c ? movie.c.join(" ") : ""} ${movie.d ? movie.d.join(" ") : ""} ${movie.k ? movie.k.join(" ") : ""}`.toLowerCase();
     // Exact phrase fast path — catches curated keyword-array phrases like "time travel" directly.
@@ -215,7 +243,7 @@
     state.tags.forEach((tag, i) => {
       const chip = document.createElement("span");
       chip.className = "tag-chip";
-      const kindLabel = tag.type === "decade" ? "era" : tag.type === "genre" ? "genre" : tag.type === "actor" ? "actor" : tag.type === "director" ? "director" : "mood";
+      const kindLabel = tag.type === "decade" ? "era" : tag.type === "genre" ? "genre" : tag.type === "actor" ? "actor" : tag.type === "director" ? "director" : tag.type === "streaming" ? "streaming" : "mood";
       chip.innerHTML = `<span class="tag-kind">${kindLabel}</span>${tag.label}`;
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";

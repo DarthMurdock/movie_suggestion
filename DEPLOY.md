@@ -48,8 +48,8 @@ sudo cp -r index.html calendar.html admin.html *.css *.js data /var/www/movie-fi
 sudo chown -R movie-finder:movie-finder /var/www/movie-finder
 ```
 
-That `*.js` picks up `server.js` itself too, alongside the client-side
-scripts — it all lives in the same folder.
+That `*.js` picks up `server.js` and `refresh-watch-providers.js` too,
+alongside the client-side scripts — it all lives in the same folder.
 
 ## 4. Set up 2FA and the environment file
 
@@ -168,6 +168,42 @@ pages load, and confirm the admin login (username + password + current
   visible to everyone on `calendar.html` immediately — no redeploy needed.
 - The **"download a local backup file"** link still works as a manual
   export/import option if you ever want a snapshot outside that file.
+
+## Streaming service search (monthly refresh job)
+
+Typing a streaming service name (e.g. "Netflix") into the finder searches
+against `data/watch-providers.json` — a mapping of which movies are
+currently streaming where, built by `refresh-watch-providers.js`. This
+file doesn't exist until you run that script at least once; until then,
+service names just get treated as regular search words instead.
+
+**First run** (takes roughly 60-100 minutes for the full ~9,800-movie
+catalog — TMDB rate-limits requests, so this can't go faster):
+
+```bash
+cd /var/www/movie-finder
+TMDB_API_KEY=your-tmdb-key node refresh-watch-providers.js
+```
+
+It checkpoints progress every 200 movies, so if it's interrupted partway,
+you'll still have partial data rather than nothing.
+
+**Keeping it current** — streaming availability changes constantly (unlike
+ratings, which we cache forever), so this needs to actually re-run
+regularly, not just once. Set up a monthly cron job:
+
+```bash
+sudo crontab -e
+```
+
+Add a line to run it at 3am on the 1st of each month:
+
+```
+0 3 1 * * TMDB_API_KEY=your-tmdb-key /usr/bin/node /var/www/movie-finder/refresh-watch-providers.js >> /var/log/movie-finder-refresh.log 2>&1
+```
+
+No restart needed afterward — `watch-providers.json` is just a static
+file the finder fetches fresh on each page load, same as `movies.json`.
 
 ## Updating the site later
 

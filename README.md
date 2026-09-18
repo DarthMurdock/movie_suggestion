@@ -31,15 +31,22 @@ self-hosted Node server.
   popularity), enriched with runtime, cast, director, and poster URLs for
   a subset sourced from a secondary TMDB export. See `calendar-engine.js`
   and `app.js` for how matching/filtering works.
+- **`data/watch-providers.json`** — which movies are streaming where
+  right now (e.g. typing "Netflix" in the finder searches this), built by
+  `refresh-watch-providers.js` on a monthly cron job — see DEPLOY.md.
+  Doesn't exist until that script's been run at least once.
 - **`server.js`** — a single Node process (no external dependencies —
   just the built-in `http`, `fs`, and `crypto` modules) that serves the
   static files directly *and* two API routes:
   - `/api/calendar-rules` — reads/writes the calendar's theme rules and
     admin overrides, stored as a JSON file on disk. Publishing requires a
     username, password, and a valid TOTP code (RFC 6238).
-  - `/api/movie-details` — proxies TMDB's search and watch-providers
-    APIs for a given title/year, caching results on disk for 30 days so
-    repeat lookups don't re-hit the API.
+  - `/api/movie-details` — proxies TMDB's search/watch-providers APIs and
+    OMDb's ratings API for a given title/year. TMDB results (overview,
+    streaming availability) cache for 30 days, since where a movie is
+    streaming genuinely changes. Ratings cache indefinitely once found —
+    an IMDb/RT/Metacritic score rarely moves, so there's no reason to
+    re-fetch it every month like the rest.
 - Runs as a systemd service, exposed to the internet via Cloudflare
   Tunnel — no ports opened on the router, no nginx or other reverse proxy
   in front of it.
