@@ -86,6 +86,91 @@ body{
   margin-bottom: 2.75rem;
 }
 
+.todays-pick{
+  margin: 0 0 2.75rem;
+}
+
+.todays-pick-label{
+  text-align: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  margin: 0 0 0.75rem;
+}
+
+.todays-pick-card{
+  display: flex;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.todays-pick-card:hover{ border-color: var(--gold-dim); }
+.todays-pick-card:active{ transform: scale(0.997); }
+
+.todays-pick-poster{
+  width: 110px;
+  height: 165px;
+  flex-shrink: 0;
+  object-fit: cover;
+  background: var(--surface-raised);
+}
+
+.todays-pick-info{
+  padding: 1.1rem 1.4rem;
+  min-width: 0;
+}
+
+.todays-pick-theme{
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 0.3rem;
+}
+
+.todays-pick-title{
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 0.2rem;
+  color: var(--text);
+}
+
+.todays-pick-meta{
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  margin: 0 0 0.5rem;
+}
+
+.todays-pick-overview{
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.todays-pick-calendar-link{
+  display: block;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  margin-top: 0.6rem;
+}
+.todays-pick-calendar-link:hover{ color: var(--gold); }
+
 .hero-eyebrow{
   font-size: 0.8rem;
   letter-spacing: 0.02em;
@@ -545,5 +630,7 @@ body{
   .tag-form{ flex-direction: column; }
   .ticket{ flex-direction: column; }
   .ticket-poster{ width: 100%; height: auto; }
+  .todays-pick-card{ flex-direction: column; }
+  .todays-pick-poster{ width: 100%; height: auto; max-height: 260px; }
   .movie-row-title{ white-space: normal; }
 }

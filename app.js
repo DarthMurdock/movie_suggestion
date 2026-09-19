@@ -2,6 +2,7 @@
   "use strict";
 
   const DATA_ROOT = "data";
+  const API_URL = "/api/calendar-rules";
   const MAX_SHOWN = 50;
 
   const state = {
@@ -25,6 +26,7 @@
   const resultsZone = document.querySelector(".results-zone");
   const tagZone = document.querySelector(".tag-zone");
   const panelPicked = el("panel-picked");
+  const todaysPickZone = el("todays-pick");
 
   const SYNONYMS = {
     supernatural: ["ghost", "demon", "possess", "haunt", "curse", "witch", "vampire", "occult", "spirit"],
@@ -78,6 +80,18 @@
   }
 
   /* ---------- init ---------- */
+  async function loadRules() {
+    try {
+      const res = await fetch(API_URL);
+      if (res.status === 200) return await res.json();
+      // 204 (nothing published yet) or function unavailable -> fall through to bundled default
+    } catch (err) {
+      // /api/calendar-rules not reachable -> fall through
+    }
+    const res = await fetch(`${DATA_ROOT}/calendar-rules.json`);
+    return res.json();
+  }
+
   async function init() {
     try {
       const [manifestRes, moviesRes] = await Promise.all([
@@ -117,10 +131,46 @@
       }
 
       render();
+
+      // Today's calendar pick is a nice-to-have on this page, not core —
+      // if it fails for any reason, the rest of the finder should still
+      // work fine, so this is deliberately isolated from the block above.
+      try {
+        const rules = await loadRules();
+        const result = CalendarEngine.pickMovieForDate(new Date(), rules, state.allMovies, 0);
+        if (result.movie) renderTodaysPick(result.movie, result.ruleLabel);
+      } catch (err) {
+        // no calendar data available — just leave the teaser hidden
+      }
     } catch (err) {
       stateStart.textContent = "Couldn't load the movie catalog. Check that the data/ folder is next to index.html.";
       console.error(err);
     }
+  }
+
+  function renderTodaysPick(movie, ruleLabel) {
+    el("todays-pick-title").textContent = movie.t;
+    el("todays-pick-meta").textContent = `${movie.y}` + (movie.rt ? ` · ${movie.rt} min` : "");
+    el("todays-pick-overview").textContent = movie.o || "";
+
+    const themeEl = el("todays-pick-theme");
+    if (ruleLabel) {
+      themeEl.textContent = ruleLabel;
+      themeEl.hidden = false;
+    } else {
+      themeEl.hidden = true;
+    }
+
+    const posterEl = el("todays-pick-poster");
+    if (movie.pu) {
+      posterEl.src = movie.pu;
+      posterEl.hidden = false;
+    } else {
+      posterEl.hidden = true;
+    }
+
+    el("todays-pick-card").addEventListener("click", () => showPicked(movie));
+    todaysPickZone.hidden = false;
   }
 
   /* ---------- tag parsing ---------- */
@@ -396,6 +446,7 @@
 
     tagZone.hidden = true;
     resultsZone.hidden = true;
+    todaysPickZone.hidden = true;
     panelPicked.hidden = false;
   }
 
@@ -403,6 +454,7 @@
     panelPicked.hidden = true;
     tagZone.hidden = false;
     resultsZone.hidden = false;
+    if (el("todays-pick-title").textContent) todaysPickZone.hidden = false; // only re-show if a pick was actually loaded
   }
 
   /* ---------- events ---------- */

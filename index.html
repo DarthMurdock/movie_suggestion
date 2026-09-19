@@ -39,6 +39,21 @@
     <h1 class="hero-title">What do you want<br>to watch tonight?</h1>
   </header>
 
+  <!-- TONIGHT'S CALENDAR PICK — a zero-click suggestion right up front -->
+  <section id="todays-pick" class="todays-pick" hidden>
+    <p class="todays-pick-label">Tonight's calendar pick</p>
+    <button type="button" id="todays-pick-card" class="todays-pick-card">
+      <img id="todays-pick-poster" class="todays-pick-poster" src="" alt="" hidden>
+      <div class="todays-pick-info">
+        <p class="todays-pick-theme" id="todays-pick-theme" hidden></p>
+        <h2 class="todays-pick-title" id="todays-pick-title"></h2>
+        <p class="todays-pick-meta" id="todays-pick-meta"></p>
+        <p class="todays-pick-overview" id="todays-pick-overview"></p>
+      </div>
+    </button>
+    <a href="calendar.html" class="todays-pick-calendar-link">See the full calendar &rarr;</a>
+  </section>
+
   <!-- TAG INPUT -->
   <section class="tag-zone">
     <form id="tag-form" class="tag-form">
@@ -114,6 +129,7 @@
   <p>This product uses the TMDB API but is not endorsed or certified by <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>. Ratings data from <a href="https://www.omdbapi.com" target="_blank" rel="noopener">OMDb API</a>.</p>
 </footer>
 
+<script src="calendar-engine.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
