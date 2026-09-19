@@ -165,10 +165,14 @@
       return { raw: text, type: "director", value: directorMatch, label: directorMatch };
     }
 
-    // streaming service: exact match against known providers from the monthly refresh
+    // streaming service: exact match against known providers from the monthly refresh.
+    // Matching itself uses substring search (see movieMatchesTag) rather than requiring
+    // this exact canonical name, since TMDB sometimes splits one real service into
+    // multiple named variants (e.g. "Netflix" and "Netflix Standard with Ads" both
+    // appear separately) — an exact match alone would undercount real availability.
     const providerMatch = state.providerIndex.get(lower);
     if (providerMatch) {
-      return { raw: text, type: "streaming", value: providerMatch, label: providerMatch };
+      return { raw: text, type: "streaming", matchTerm: lower, value: providerMatch, label: providerMatch };
     }
 
     // free text — build one word-group per word (each group = that word plus its
@@ -218,7 +222,8 @@
     if (tag.type === "streaming") {
       const key = `${movie.t.toLowerCase()}|${movie.y}`;
       const providers = state.watchProviders[key];
-      return !!(providers && providers.includes(tag.value));
+      if (!providers) return false;
+      return providers.some((p) => p.toLowerCase().includes(tag.matchTerm));
     }
     if (tag.type === "runtime") {
       if (!movie.rt) return false; // no data — can't confirm it fits, so exclude
@@ -266,6 +271,7 @@
   function render() {
     renderTags();
     syncRuntimeButtons();
+    syncStreamingButtons();
 
     if (state.tags.length === 0) {
       stateStart.hidden = false;
@@ -439,13 +445,46 @@
     });
   });
 
+  // Only one streaming filter active at a time — combining two (e.g. Netflix
+  // AND Hulu) would almost always yield zero results anyway, since a movie
+  // is rarely on both, so this avoids an easy-to-hit confusing dead end.
+  function syncStreamingButtons() {
+    const active = state.tags.find((t) => t.type === "streaming");
+    document.querySelectorAll(".streaming-btn").forEach((btn) => {
+      const isThisOne = active && btn.dataset.term === active.matchTerm;
+      btn.classList.toggle("is-active", !!isThisOne);
+    });
+  }
+
+  function setStreamingTag(matchTerm, label) {
+    const existingIndex = state.tags.findIndex((t) => t.type === "streaming");
+    const alreadyThisOne = existingIndex !== -1 && state.tags[existingIndex].matchTerm === matchTerm;
+
+    if (existingIndex !== -1) state.tags.splice(existingIndex, 1); // remove any existing streaming tag first
+
+    if (!alreadyThisOne) {
+      state.tags.push({ type: "streaming", matchTerm, label });
+    }
+  }
+
+  document.querySelectorAll(".streaming-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setStreamingTag(btn.dataset.term, btn.textContent);
+      render();
+    });
+  });
+
   tagForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const tag = parseTag(tagInput.value);
     tagInput.value = "";
     if (!tag) return;
     if (tagAlreadyActive(tag)) return;
-    state.tags.push(tag);
+    if (tag.type === "streaming") {
+      setStreamingTag(tag.matchTerm, tag.label);
+    } else {
+      state.tags.push(tag);
+    }
     render();
   });
 
