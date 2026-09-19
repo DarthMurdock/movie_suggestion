@@ -13,6 +13,7 @@
     shuffleOffset: 0,
     liveSource: false,
     watchProviders: {}, // "title|year" (lowercase title) -> {flatrate, rent, buy}
+    currentPick: null, // the movie currently shown in the ticket, for the share button
   };
 
   const monthLabelEl = el("month-label");
@@ -72,6 +73,30 @@
     el("shuffle-btn").addEventListener("click", () => {
       state.shuffleOffset += 1;
       renderDetail();
+    });
+    el("detail-share-btn").addEventListener("click", async () => {
+      if (!state.currentPick) return;
+      const movie = state.currentPick;
+      const url = `${window.location.origin}/share?t=${encodeURIComponent(movie.t)}&y=${movie.y}`;
+      const btn = el("detail-share-btn");
+      const originalText = btn.textContent;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: `${movie.t} (${movie.y})`, url });
+          return;
+        } catch (err) {
+          return; // user cancelled the native share sheet — not an error
+        }
+      }
+
+      try {
+        await navigator.clipboard.writeText(url);
+        btn.textContent = "link copied!";
+        setTimeout(() => { btn.textContent = originalText; }, 2000);
+      } catch (err) {
+        btn.textContent = url;
+      }
     });
   }
 
@@ -151,6 +176,7 @@
     }
     empty.hidden = true;
     ticket.hidden = false;
+    state.currentPick = result.movie;
 
     const dateLabel = state.selectedDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     el("detail-kicker").textContent = result.ruleLabel ? `${dateLabel} · ${result.ruleLabel}` : dateLabel;
@@ -174,6 +200,59 @@
     renderRatings(result.movie.rr, "detail-ratings-row");
     const key = `${result.movie.t.toLowerCase()}|${result.movie.y}`;
     renderWatchProviders(state.watchProviders[key], "detail-watch-providers", "detail-watch-badges");
+    renderDoubleFeature(result.movie);
+  }
+
+  function findPairing(movie, allMovies) {
+    let best = null;
+    let bestScore = -1;
+    let bestReason = "";
+
+    for (const c of allMovies) {
+      if (c === movie) continue;
+
+      let score = 0;
+      let reason = "";
+
+      const sharedDirector = movie.d && c.d && movie.d.find((d) => c.d.includes(d));
+      if (sharedDirector) {
+        score = 100 + Math.min(c.p || 0, 50) * 0.1;
+        reason = `Also directed by ${sharedDirector}`;
+      } else {
+        const sharedGenres = movie.g.filter((g) => c.g.includes(g));
+        const sharedKeywords = (movie.k && c.k) ? movie.k.filter((k) => c.k.includes(k)) : [];
+        if (sharedGenres.length === 0) continue;
+        score = sharedGenres.length * 10 + sharedKeywords.length * 5 + Math.min(c.p || 0, 20) * 0.1;
+        reason = `Also ${sharedGenres[0]}` + (sharedKeywords.length > 0 ? ` · shares themes like ${sharedKeywords[0]}` : "");
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = c;
+        bestReason = reason;
+      }
+    }
+    return bestScore > 0 ? { movie: best, reason: bestReason } : null;
+  }
+
+  function renderDoubleFeature(movie) {
+    const pairing = findPairing(movie, state.movies);
+    const zone = el("detail-double-feature");
+    if (!pairing) { zone.hidden = true; return; }
+
+    el("detail-double-feature-title").textContent = `${pairing.movie.t} (${pairing.movie.y})`;
+    el("detail-double-feature-reason").textContent = pairing.reason;
+    const posterEl = el("detail-double-feature-poster");
+    if (pairing.movie.pu) {
+      posterEl.src = pairing.movie.pu;
+      posterEl.hidden = false;
+    } else {
+      posterEl.hidden = true;
+    }
+
+    const link = el("detail-double-feature-card");
+    link.href = `index.html?t=${encodeURIComponent(pairing.movie.t)}&y=${pairing.movie.y}`;
+    zone.hidden = false;
   }
 
   /* ---------- ratings + watch providers (baked into the static data — no live API calls) ---------- */

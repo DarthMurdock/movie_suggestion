@@ -13,6 +13,7 @@
     directorIndex: new Map(), // lowercase name -> canonical name
     providerIndex: new Map(), // lowercase provider name -> canonical name
     watchProviders: {}, // "title|year" (lowercase title) -> array of provider names
+    currentPick: null, // the movie currently shown in the ticket, for the share button
   };
 
   const el = (id) => document.getElementById(id);
@@ -141,6 +142,17 @@
         if (result.movie) renderTodaysPick(result.movie, result.ruleLabel);
       } catch (err) {
         // no calendar data available — just leave the teaser hidden
+      }
+
+      // Deep link from a shared pick (see the /share route in server.js) —
+      // if present and it matches a real movie, open its ticket right away
+      // instead of the default start screen.
+      const params = new URLSearchParams(window.location.search);
+      const sharedTitle = params.get("t");
+      const sharedYear = parseInt(params.get("y"), 10);
+      if (sharedTitle && sharedYear) {
+        const sharedMovie = state.allMovies.find((m) => m.t === sharedTitle && m.y === sharedYear);
+        if (sharedMovie) showPicked(sharedMovie);
       }
     } catch (err) {
       stateStart.textContent = "Couldn't load the movie catalog. Check that the data/ folder is next to index.html.";
@@ -432,7 +444,60 @@
   }
 
   /* ---------- picked ticket ---------- */
+  function findPairing(movie, allMovies) {
+    let best = null;
+    let bestScore = -1;
+    let bestReason = "";
+
+    for (const c of allMovies) {
+      if (c === movie) continue;
+
+      let score = 0;
+      let reason = "";
+
+      const sharedDirector = movie.d && c.d && movie.d.find((d) => c.d.includes(d));
+      if (sharedDirector) {
+        score = 100 + Math.min(c.p || 0, 50) * 0.1;
+        reason = `Also directed by ${sharedDirector}`;
+      } else {
+        const sharedGenres = movie.g.filter((g) => c.g.includes(g));
+        const sharedKeywords = (movie.k && c.k) ? movie.k.filter((k) => c.k.includes(k)) : [];
+        if (sharedGenres.length === 0) continue;
+        score = sharedGenres.length * 10 + sharedKeywords.length * 5 + Math.min(c.p || 0, 20) * 0.1;
+        reason = `Also ${sharedGenres[0]}` + (sharedKeywords.length > 0 ? ` · shares themes like ${sharedKeywords[0]}` : "");
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = c;
+        bestReason = reason;
+      }
+    }
+    return bestScore > 0 ? { movie: best, reason: bestReason } : null;
+  }
+
+  function renderDoubleFeature(movie) {
+    const pairing = findPairing(movie, state.allMovies);
+    const zone = el("double-feature");
+    if (!pairing) { zone.hidden = true; return; }
+
+    el("double-feature-title").textContent = `${pairing.movie.t} (${pairing.movie.y})`;
+    el("double-feature-reason").textContent = pairing.reason;
+    const posterEl = el("double-feature-poster");
+    if (pairing.movie.pu) {
+      posterEl.src = pairing.movie.pu;
+      posterEl.hidden = false;
+    } else {
+      posterEl.hidden = true;
+    }
+
+    const card = el("double-feature-card");
+    card.onclick = () => showPicked(pairing.movie);
+    zone.hidden = false;
+  }
+
   function showPicked(movie) {
+    state.currentPick = movie;
     el("ticket-title").textContent = movie.t;
     el("ticket-meta").textContent = `${movie.y}` + (movie.rt ? ` · ${movie.rt} min` : "");
     el("ticket-tags").innerHTML = movie.g.map((g) => `<span class="tag">${g}</span>`).join("");
@@ -441,6 +506,7 @@
     renderRatings(movie.rr, "ratings-row");
     const key = `${movie.t.toLowerCase()}|${movie.y}`;
     renderWatchProviders(state.watchProviders[key], "watch-providers", "watch-badges");
+    renderDoubleFeature(movie);
 
     const posterEl = el("ticket-poster");
     if (posterEl) {
@@ -538,6 +604,31 @@
     state.tags = [];
     backToList();
     render();
+  });
+
+  el("share-btn").addEventListener("click", async () => {
+    if (!state.currentPick) return;
+    const movie = state.currentPick;
+    const url = `${window.location.origin}/share?t=${encodeURIComponent(movie.t)}&y=${movie.y}`;
+    const btn = el("share-btn");
+    const originalText = btn.textContent;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${movie.t} (${movie.y})`, url });
+        return;
+      } catch (err) {
+        return; // user cancelled the native share sheet — not an error
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      btn.textContent = "link copied!";
+      setTimeout(() => { btn.textContent = originalText; }, 2000);
+    } catch (err) {
+      btn.textContent = url; // clipboard blocked — show the raw link as a last resort
+    }
   });
 
   init();

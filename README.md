@@ -10,14 +10,19 @@ self-hosted Node server.
 - **`index.html`** — Finder. Add keywords one at a time (genre, decade,
   actor, mood, streaming service, runtime) and the movie list narrows live
   as tags stack, AND-style. Click a movie to see its full detail card,
-  including overview, ratings, and streaming availability — all baked
-  into the static data ahead of time, no live lookups on click.
+  including overview, ratings, streaming availability, and a suggested
+  double-feature pairing (same director where possible, otherwise
+  genre/keyword overlap) — all baked into the static data ahead of time,
+  no live lookups on click. Also shows today's calendar pick right up
+  front, and a "share this pick" button generates a link with a real,
+  movie-specific preview.
 - **`calendar.html`** — A pick for every day of the year. Some windows
   are themed (Horror all of October, a Romance week before Valentine's,
   specific pinned films like *Groundhog Day* on Feb 2), holidays are
   computed by real date math (e.g. "3rd Monday of January" for MLK Day)
   rather than hardcoded, and everything else defaults to a runtime-aware
-  grab-bag pick (90 min or under on weekdays, no cap on weekends).
+  grab-bag pick (90 min or under on weekdays, no cap on weekends). Same
+  double-feature suggestions and shareable links as the finder.
 - **`admin.html`** — Username + password + TOTP (authenticator app)
   login, then search any movie and pin it to a date (once, or recurring
   every year), or just rename a day without picking a movie. Changes
@@ -41,10 +46,18 @@ self-hosted Node server.
   run at least once.
 - **`server.js`** — a single Node process (no external dependencies —
   just the built-in `http`, `fs`, and `crypto` modules) that serves the
-  static files directly, plus one API route:
+  static files directly, plus two routes:
   - `/api/calendar-rules` — reads/writes the calendar's theme rules and
     admin overrides, stored as a JSON file on disk. Publishing requires a
     username, password, and a valid TOTP code (RFC 6238).
+  - `/share?t=<title>&y=<year>` — generates a movie-specific preview page
+    (real poster, real overview, proper Open Graph/Twitter Card tags) for
+    the "share this pick" button on the finder and calendar, then
+    redirects real visitors into the interactive site with that movie
+    already open. `movies.json` is loaded into memory once at startup
+    rather than re-read per request — it's tens of MB at this catalog's
+    size, and re-parsing it on every share-link click added a real,
+    measurable delay.
 
   The live server makes **no calls to TMDB or OMDb at all** — movie
   overviews, ratings, streaming availability, and runtime are all baked

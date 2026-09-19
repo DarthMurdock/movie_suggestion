@@ -279,12 +279,87 @@ async function handleStatic(req, res, pathname) {
   }
 }
 
+/* ---------- share links (movie-specific Open Graph previews) ---------- */
+
+// Loaded once at startup rather than re-read per request — movies.json is
+// tens of MB at this catalog's size, and re-parsing it on every share-link
+// visit would add a real, avoidable delay (measured ~150-200ms even on
+// decent hardware, likely worse on a Pi). The service restarts on every
+// deploy anyway, so a startup-time load never goes stale in practice.
+let moviesCache = [];
+
+async function loadMoviesCache() {
+  try {
+    const content = await fs.readFile(path.join(STATIC_DIR, "data", "movies.json"), "utf8");
+    moviesCache = JSON.parse(content);
+    console.log(`Loaded ${moviesCache.length} movies into memory for share links.`);
+  } catch (err) {
+    console.error("Couldn't load movies.json for share links:", err.message);
+    moviesCache = [];
+  }
+}
+
+function escapeHtmlServer(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function handleShare(req, res, query) {
+  const title = (query.get("t") || "").trim();
+  const year = parseInt(query.get("y"), 10);
+  const movie = moviesCache.find((m) => m.t === title && m.y === year);
+  const deepLink = movie ? `/?t=${encodeURIComponent(movie.t)}&y=${movie.y}` : "/";
+
+  if (!movie) {
+    // Unknown movie (bad/stale link) — just send them to the homepage
+    // rather than erroring, no generic-but-real OG preview needed here.
+    res.writeHead(302, { Location: deepLink });
+    return res.end();
+  }
+
+  const title_ = escapeHtmlServer(movie.t);
+  const overview = escapeHtmlServer((movie.o || "").slice(0, 200));
+  const image = movie.pu || "https://tonightsflick.com/assets/og-image.png";
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title_} (${movie.y}) — Tonight's Pick</title>
+<meta name="description" content="${overview}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Tonight's Pick">
+<meta property="og:title" content="${title_} (${movie.y})">
+<meta property="og:description" content="${overview}">
+<meta property="og:image" content="${image}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${title_} (${movie.y})">
+<meta name="twitter:description" content="${overview}">
+<meta name="twitter:image" content="${image}">
+<meta http-equiv="refresh" content="0; url=${deepLink}">
+<link rel="canonical" href="https://tonightsflick.com${deepLink}">
+</head>
+<body>
+<p>Taking you to <a href="${deepLink}">${title_}</a>&hellip;</p>
+</body>
+</html>`;
+
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  res.end(html);
+}
+
 /* ---------- server ---------- */
 
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (url.pathname === "/api/calendar-rules") return await handleCalendarRules(req, res);
+    if (url.pathname === "/share") return await handleShare(req, res, url.searchParams);
     return await handleStatic(req, res, url.pathname);
   } catch (err) {
     console.error(err);
@@ -293,7 +368,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-ensureDataDir().then(() => {
+Promise.all([ensureDataDir(), loadMoviesCache()]).then(() => {
   server.listen(PORT, HOST, () => {
     console.log(`movie-finder server listening on ${HOST}:${PORT}`);
   });
