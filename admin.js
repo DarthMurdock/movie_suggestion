@@ -57,7 +57,7 @@
 
   /* ---------- auth gate ---------- */
   async function verifyCredentials(username, secret, totp) {
-    // Returns 'ok' | 'wrong' | 'unreachable'
+    // Returns 'ok' | 'wrong' | 'rate-limited' | 'unreachable'
     try {
       const res = await fetch(API_URL, {
         method: "POST",
@@ -66,6 +66,7 @@
       });
       if (res.status === 200) return "ok";
       if (res.status === 401) return "wrong";
+      if (res.status === 429) return "rate-limited";
       return "unreachable"; // 500 (server misconfigured) or anything unexpected
     } catch (err) {
       return "unreachable";
@@ -106,6 +107,10 @@
     }
     if (result === "wrong") {
       showGateError("Wrong username, password, or authentication code.");
+      return;
+    }
+    if (result === "rate-limited") {
+      showGateError("Too many failed attempts — wait about 5 minutes and try again.");
       return;
     }
     showGateError("Can't verify right now — the live server isn't reachable, or isn't fully configured. Admin editing requires ADMIN_USERNAME, ADMIN_SECRET, and TOTP_SECRET all set on the server.");
