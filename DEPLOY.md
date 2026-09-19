@@ -176,6 +176,45 @@ pages load, and confirm the admin login (username + password + current
 - The **"download a local backup file"** link still works as a manual
   export/import option if you ever want a snapshot outside that file.
 
+## Growing the catalog
+
+`grow-catalog.js` pulls additional movies directly from TMDB's full
+library (not just the original curated snapshot), fully enriched on the
+way in — runtime, cast, director, keywords, and streaming availability
+all come from one details call per movie, so new entries don't need a
+separate backfill afterward. Only pulls movies with a minimum vote count
+on TMDB (default 50), to keep out extremely obscure/incomplete entries.
+
+Safe to re-run later — it dedupes against what's already in
+`movies.json`, so running it again just tops up with anything new
+(including movies released since the last run).
+
+```bash
+cd /var/www/movie-finder
+TMDB_API_KEY=your-tmdb-key TARGET_NEW_COUNT=40000 nohup node grow-catalog.js > ~/grow.log 2>&1 &
+```
+
+**This is a long one** — adding 40,000 movies takes roughly 3-4 hours
+(one details call per new movie, rate-limited the same as the other
+scripts). Definitely use the background/`nohup` approach, not a foreground
+session. Checkpoints every 250 movies, so an interruption only costs you
+back to the last checkpoint, not the whole run.
+
+`MIN_VOTE_COUNT` and `TARGET_NEW_COUNT` are both optional environment
+variables — omit either to use the defaults (50 votes minimum, 40,000
+new movies).
+
+Once it's done, copy both updated files back to your source directory and
+commit:
+
+```bash
+cp /var/www/movie-finder/data/movies.json /var/www/movie-finder/data/watch-providers.json /mnt/PI_Projects/movie-finder-v2/data/
+cd /mnt/PI_Projects/movie-finder-v2
+git add data/movies.json data/watch-providers.json
+git commit -m "Grow the movie catalog"
+git push
+```
+
 ## Runtime data (one-time backfill)
 
 Only ~2,800 of the ~9,800 movies ship with runtime out of the box. Unlike
