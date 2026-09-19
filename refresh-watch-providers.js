@@ -1,6 +1,10 @@
-// Batch job: fetches current streaming (subscription/"flatrate") availability
-// for every movie in data/movies.json, writing the result to
-// data/watch-providers.json for the finder to search against.
+// Batch job: fetches current streaming availability (subscription,
+// rent, and buy — with provider logos) for every movie in
+// data/movies.json, writing the result to data/watch-providers.json.
+// This is used for BOTH the finder's streaming-service search AND the
+// "Where to watch" section on each movie's ticket — the ticket display
+// used to fetch this live per-visit; now everything comes from this
+// pre-built file instead, so normal site traffic never calls TMDB at all.
 //
 // Run manually once, then on a monthly cron schedule (see DEPLOY.md).
 // Takes roughly 60-100 minutes for ~9,800 movies — two TMDB calls per movie
@@ -23,6 +27,13 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function simplifyProviders(list) {
+  return (list || []).map((p) => ({
+    name: p.provider_name,
+    logo: p.logo_path ? `https://image.tmdb.org/t/p/w45${p.logo_path}` : null,
+  }));
+}
+
 async function fetchProvidersFor(title, year, apiKey) {
   const searchUrl = `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(title)}&year=${year}`;
   const searchRes = await fetch(searchUrl);
@@ -39,8 +50,13 @@ async function fetchProvidersFor(title, year, apiKey) {
   const detailsData = await detailsRes.json();
 
   const regionData = (detailsData.results && detailsData.results[WATCH_REGION]) || {};
-  const flatrate = (regionData.flatrate || []).map((p) => p.provider_name);
-  return flatrate.length > 0 ? flatrate : null; // null, not [], if nothing to keep the file smaller
+  const result = {
+    flatrate: simplifyProviders(regionData.flatrate),
+    rent: simplifyProviders(regionData.rent),
+    buy: simplifyProviders(regionData.buy),
+  };
+  const hasAny = result.flatrate.length || result.rent.length || result.buy.length;
+  return hasAny ? result : null; // null, not an empty structure, if nothing to keep the file smaller
 }
 
 async function main() {

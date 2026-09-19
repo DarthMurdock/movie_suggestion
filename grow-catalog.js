@@ -94,9 +94,15 @@ function buildMovieRecord(details, genreMap) {
   if (directors.length) record.d = directors;
 
   const regionProviders = (details["watch/providers"] && details["watch/providers"].results && details["watch/providers"].results[WATCH_REGION]) || {};
-  const flatrate = (regionProviders.flatrate || []).map((p) => p.provider_name);
+  const simplifyProviders = (list) =>
+    (list || []).map((p) => ({ name: p.provider_name, logo: p.logo_path ? `https://image.tmdb.org/t/p/w45${p.logo_path}` : null }));
+  const watchProviders = {
+    flatrate: simplifyProviders(regionProviders.flatrate),
+    rent: simplifyProviders(regionProviders.rent),
+    buy: simplifyProviders(regionProviders.buy),
+  };
 
-  return { record, flatrate };
+  return { record, watchProviders };
 }
 
 async function main() {
@@ -162,7 +168,8 @@ async function main() {
           }
           movies.push(built.record);
           existingKeys.add(key);
-          if (built.flatrate.length) watchProviders[key] = built.flatrate;
+          const hasAnyProvider = built.watchProviders.flatrate.length || built.watchProviders.rent.length || built.watchProviders.buy.length;
+          if (hasAnyProvider) watchProviders[key] = built.watchProviders;
           totalAdded++;
           addedSinceCheckpoint++;
         } catch (err) {

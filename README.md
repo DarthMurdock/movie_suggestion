@@ -8,9 +8,10 @@ self-hosted Node server.
 ## Pages
 
 - **`index.html`** — Finder. Add keywords one at a time (genre, decade,
-  actor, mood) and the movie list narrows live as tags stack, AND-style.
-  Click a movie to see its full detail card, including a live-fetched
-  overview and streaming availability from TMDB.
+  actor, mood, streaming service, runtime) and the movie list narrows live
+  as tags stack, AND-style. Click a movie to see its full detail card,
+  including overview, ratings, and streaming availability — all baked
+  into the static data ahead of time, no live lookups on click.
 - **`calendar.html`** — A pick for every day of the year. Some windows
   are themed (Horror all of October, a Romance week before Valentine's,
   specific pinned films like *Groundhog Day* on Feb 2), holidays are
@@ -27,26 +28,32 @@ self-hosted Node server.
 
 - No framework, no build step — plain HTML/CSS/JS, static files served
   as-is by `server.js` itself.
-- **`data/movies.json`** — ~9,800 movies (title, year, genre, overview,
-  popularity), enriched with runtime, cast, director, and poster URLs for
-  a subset sourced from a secondary TMDB export. See `calendar-engine.js`
+- **`data/movies.json`** — ~9,800+ movies (title, year, genre, overview,
+  popularity), enriched with runtime, cast, director, keywords, poster
+  URLs, and ratings (`rr`) — either from the original curated snapshot or
+  pulled fresh from TMDB via `grow-catalog.js`. See `calendar-engine.js`
   and `app.js` for how matching/filtering works.
 - **`data/watch-providers.json`** — which movies are streaming where
-  right now (e.g. typing "Netflix" in the finder searches this), built by
-  `refresh-watch-providers.js` on a monthly cron job — see DEPLOY.md.
-  Doesn't exist until that script's been run at least once.
+  right now, and where to rent/buy them — built by
+  `refresh-watch-providers.js` on a monthly cron job (see DEPLOY.md).
+  Used for both the finder's streaming-service search and the "Where to
+  watch" section on each ticket. Doesn't exist until that script's been
+  run at least once.
 - **`server.js`** — a single Node process (no external dependencies —
   just the built-in `http`, `fs`, and `crypto` modules) that serves the
-  static files directly *and* two API routes:
+  static files directly, plus one API route:
   - `/api/calendar-rules` — reads/writes the calendar's theme rules and
     admin overrides, stored as a JSON file on disk. Publishing requires a
     username, password, and a valid TOTP code (RFC 6238).
-  - `/api/movie-details` — proxies TMDB's search/watch-providers APIs and
-    OMDb's ratings API for a given title/year. TMDB results (overview,
-    streaming availability) cache for 30 days, since where a movie is
-    streaming genuinely changes. Ratings cache indefinitely once found —
-    an IMDb/RT/Metacritic score rarely moves, so there's no reason to
-    re-fetch it every month like the rest.
+
+  The live server makes **no calls to TMDB or OMDb at all** — movie
+  overviews, ratings, streaming availability, and runtime are all baked
+  into the static data files ahead of time by separate batch scripts
+  (`grow-catalog.js`, `backfill-ratings.js`, `refresh-watch-providers.js`,
+  `backfill-runtime.js`), run manually or on a schedule rather than
+  triggered by visitor traffic — see DEPLOY.md for all of them. That
+  means API usage is bounded by how often *you* run these, not by how
+  much traffic the site gets.
 - Runs as a systemd service, exposed to the internet via Cloudflare
   Tunnel — no ports opened on the router, no nginx or other reverse proxy
   in front of it.
@@ -57,7 +64,7 @@ self-hosted Node server.
 
 ```bash
 DATA_DIR=./local-data PORT=3001 \
-ADMIN_USERNAME=you ADMIN_SECRET=devpassword TOTP_SECRET=your-totp-secret TMDB_API_KEY=your-key OMDB_API_KEY=your-omdb-key \
+ADMIN_USERNAME=you ADMIN_SECRET=devpassword TOTP_SECRET=your-totp-secret \
 node server.js
 ```
 

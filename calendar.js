@@ -12,6 +12,7 @@
     selectedDate: null,
     shuffleOffset: 0,
     liveSource: false,
+    watchProviders: {}, // "title|year" (lowercase title) -> {flatrate, rent, buy}
   };
 
   const monthLabelEl = el("month-label");
@@ -47,6 +48,16 @@
       ]);
       state.rules = rules;
       state.movies = await moviesRes.json();
+
+      // Optional — only present once the monthly refresh job has run at
+      // least once. Missing entirely just means no "Where to watch"
+      // section shows; everything else works the same either way.
+      try {
+        const providersRes = await fetch(`${DATA_ROOT}/watch-providers.json`);
+        if (providersRes.ok) state.watchProviders = await providersRes.json();
+      } catch (err) {
+        // no watch-providers.json yet — fine, just skip it
+      }
     } catch (err) {
       console.error(err);
       dayGridEl.innerHTML = `<p style="color:var(--text-muted)">Couldn't load calendar data.</p>`;
@@ -160,25 +171,12 @@
 
     el("detail-ratings-row").hidden = true;
     el("detail-watch-providers").hidden = true;
-    fetchLiveDetails(result.movie);
+    renderRatings(result.movie.rr, "detail-ratings-row");
+    const key = `${result.movie.t.toLowerCase()}|${result.movie.y}`;
+    renderWatchProviders(state.watchProviders[key], "detail-watch-providers", "detail-watch-badges");
   }
 
-  /* ---------- live TMDB details (overview + ratings + watch providers) ---------- */
-  async function fetchLiveDetails(movie) {
-    try {
-      const res = await fetch(`/api/movie-details?title=${encodeURIComponent(movie.t)}&year=${movie.y}`);
-      if (res.status !== 200) return; // API server unreachable — keep static data
-      const data = await res.json();
-      if (!data.found) return;
-
-      if (data.overview) el("detail-overview").textContent = data.overview;
-      renderRatings(data.ratings, "detail-ratings-row");
-      renderWatchProviders(data.watchProviders, "detail-watch-providers", "detail-watch-badges");
-    } catch (err) {
-      // silently keep the static bundled overview
-    }
-  }
-
+  /* ---------- ratings + watch providers (baked into the static data — no live API calls) ---------- */
   function renderRatings(ratings, rowId) {
     const row = el(rowId);
     if (!ratings) { row.hidden = true; return; }

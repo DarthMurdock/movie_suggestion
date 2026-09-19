@@ -1,11 +1,18 @@
-// Self-hosted, all-in-one server: serves both the two API routes and the
-// static files (HTML/CSS/JS/data) directly. No nginx or other reverse
-// proxy involved — this process is the whole thing. Binds to localhost
-// only; Cloudflare Tunnel (cloudflared, already running on this Pi)
-// reaches it over loopback and is the only path in from outside.
+// Self-hosted, all-in-one server: serves both the calendar-rules API route
+// and the static files (HTML/CSS/JS/data) directly. No nginx or other
+// reverse proxy involved — this process is the whole thing. Binds to
+// localhost only; Cloudflare Tunnel (cloudflared, already running on this
+// Pi) reaches it over loopback and is the only path in from outside.
 //
-// Storage: KV becomes plain JSON files on disk (DATA_DIR/rules.json for
-// the calendar config, DATA_DIR/cache/<hash>.json per TMDB lookup).
+// Deliberately makes NO calls to TMDB or OMDb itself — movie overviews,
+// ratings, and streaming availability are all baked into the static data
+// files by separate batch scripts (grow-catalog.js, backfill-ratings.js,
+// refresh-watch-providers.js, backfill-runtime.js), run manually or on a
+// schedule, not triggered by visitor traffic. That means API usage is
+// bounded and predictable regardless of how much traffic the site gets.
+//
+// Storage: KV becomes a plain JSON file on disk (DATA_DIR/rules.json for
+// the calendar config).
 
 const http = require("http");
 const fs = require("fs/promises");
@@ -13,15 +20,10 @@ const path = require("path");
 const crypto = require("crypto");
 
 const DATA_DIR = process.env.DATA_DIR || "/var/lib/movie-finder";
-const CACHE_DIR = path.join(DATA_DIR, "cache");
 const RULES_FILE = path.join(DATA_DIR, "rules.json");
 const STATIC_DIR = process.env.STATIC_DIR || __dirname;
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || "127.0.0.1";
-
-const TMDB_BASE = "https://api.themoviedb.org/3";
-const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const WATCH_REGION = "US";
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1MB — calendar-rules payloads are tiny JSON; generous headroom
 
@@ -102,7 +104,7 @@ function isValidTotp(secretB32, providedCode) {
 /* ---------- file-based storage (replaces KV) ---------- */
 
 async function ensureDataDir() {
-  await fs.mkdir(CACHE_DIR, { recursive: true });
+  await fs.mkdir(DATA_DIR, { recursive: true });
 }
 
 async function readRules() {
@@ -115,22 +117,6 @@ async function readRules() {
 
 async function writeRules(data) {
   await fs.writeFile(RULES_FILE, JSON.stringify(data));
-}
-
-function cacheFilename(key) {
-  return crypto.createHash("sha256").update(key).digest("hex") + ".json";
-}
-
-async function readCache(key) {
-  try {
-    return JSON.parse(await fs.readFile(path.join(CACHE_DIR, cacheFilename(key)), "utf8"));
-  } catch (err) {
-    return null;
-  }
-}
-
-async function writeCache(key, value) {
-  await fs.writeFile(path.join(CACHE_DIR, cacheFilename(key)), JSON.stringify(value));
 }
 
 /* ---------- HTTP response helpers ---------- */
@@ -243,124 +229,6 @@ async function handleCalendarRules(req, res) {
   return sendJson(res, 405, { error: "Method Not Allowed" });
 }
 
-async function handleMovieDetails(req, res, query) {
-  if (req.method !== "GET") return sendJson(res, 405, { error: "Method Not Allowed" });
-
-  const apiKey = process.env.TMDB_API_KEY;
-  if (!apiKey) return sendJson(res, 500, { error: "TMDB_API_KEY is not configured on the server." });
-
-  const title = (query.get("title") || "").trim();
-  const year = parseInt(query.get("year"), 10);
-  if (!title || !year) return sendJson(res, 400, { error: "Both 'title' and 'year' query params are required." });
-
-  try {
-    const tmdbData = await getTmdbData(title, year, apiKey);
-    if (!tmdbData.found) return sendJson(res, 200, tmdbData);
-
-    // Ratings are cached separately and much longer-lived than the TMDB data
-    // above (see getRatingsCached) — a score from OMDb rarely changes, unlike
-    // streaming availability, so there's no reason to tie its freshness to
-    // the same 30-day cycle as watch providers.
-    const ratings = await getRatingsCached(title, year);
-    return sendJson(res, 200, { ...tmdbData, ratings });
-  } catch (err) {
-    return sendJson(res, 502, { error: `TMDB lookup failed: ${err.message}` });
-  }
-}
-
-async function getTmdbData(title, year, apiKey) {
-  const cacheKey = `moviedetails:${title.toLowerCase()}|${year}`;
-  const cached = await readCache(cacheKey);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return cached.data;
-  }
-
-  const searchUrl = `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(title)}&year=${year}`;
-  const searchRes = await fetch(searchUrl);
-  if (!searchRes.ok) throw new Error(`TMDB search failed: ${searchRes.status}`);
-  const searchData = await searchRes.json();
-
-  const match = (searchData.results || [])[0];
-  if (!match) {
-    const empty = { found: false };
-    await writeCache(cacheKey, { fetchedAt: Date.now(), data: empty });
-    return empty;
-  }
-
-  const detailsUrl = `${TMDB_BASE}/movie/${match.id}?api_key=${apiKey}&append_to_response=watch/providers`;
-  const detailsRes = await fetch(detailsUrl);
-  if (!detailsRes.ok) throw new Error(`TMDB details failed: ${detailsRes.status}`);
-  const details = await detailsRes.json();
-
-  const regionProviders = (details["watch/providers"] && details["watch/providers"].results && details["watch/providers"].results[WATCH_REGION]) || {};
-  const simplifyProviders = (list) =>
-    (list || []).map((p) => ({ name: p.provider_name, logo: p.logo_path ? `https://image.tmdb.org/t/p/w45${p.logo_path}` : null }));
-
-  const data = {
-    found: true,
-    tmdbId: match.id,
-    overview: details.overview || "",
-    watchProviders: {
-      flatrate: simplifyProviders(regionProviders.flatrate),
-      rent: simplifyProviders(regionProviders.rent),
-      buy: simplifyProviders(regionProviders.buy),
-    },
-    watchLink: regionProviders.link || null,
-  };
-
-  await writeCache(cacheKey, { fetchedAt: Date.now(), data });
-  return data;
-}
-
-// Ratings, once found, are cached indefinitely — no re-fetching a score
-// that essentially never changes. A *miss* (OMDb doesn't have it, or the
-// lookup failed) is retried after a week rather than cached forever, in
-// case it was transient or the title just wasn't in OMDb's database yet.
-const RATINGS_RETRY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-async function getRatingsCached(title, year) {
-  const key = `ratings:${title.toLowerCase()}|${year}`;
-  const cached = await readCache(key);
-  if (cached) {
-    if (cached.data !== null) return cached.data; // found previously — permanent
-    if (Date.now() - cached.fetchedAt < RATINGS_RETRY_TTL_MS) return null; // recent miss — not due for retry yet
-  }
-  const ratings = await fetchOmdbRatings(title, year);
-  await writeCache(key, { fetchedAt: Date.now(), data: ratings });
-  return ratings;
-}
-
-// OMDb ratings (IMDb, Rotten Tomatoes, Metacritic) — kept separate from the
-// TMDB flow above on purpose: OMDb is a much smaller, single-person-run
-// service, so a hiccup there shouldn't take down the overview/streaming
-// info that TMDB already gave us.
-async function fetchOmdbRatings(title, year) {
-  const omdbKey = process.env.OMDB_API_KEY;
-  if (!omdbKey) return null;
-
-  try {
-    const url = `https://www.omdbapi.com/?apikey=${omdbKey}&t=${encodeURIComponent(title)}&y=${year}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (json.Response !== "True" || !Array.isArray(json.Ratings)) return null;
-
-    const bySource = {};
-    for (const r of json.Ratings) bySource[r.Source] = r.Value;
-
-    const ratings = {
-      imdb: bySource["Internet Movie Database"] || null,
-      rottenTomatoes: bySource["Rotten Tomatoes"] || null,
-      metacritic: bySource["Metacritic"] || null,
-    };
-    // If literally none of the three came back, treat it the same as no data.
-    if (!ratings.imdb && !ratings.rottenTomatoes && !ratings.metacritic) return null;
-    return ratings;
-  } catch (err) {
-    return null;
-  }
-}
-
 /* ---------- static file serving ---------- */
 
 const MIME_TYPES = {
@@ -410,7 +278,6 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (url.pathname === "/api/calendar-rules") return await handleCalendarRules(req, res);
-    if (url.pathname === "/api/movie-details") return await handleMovieDetails(req, res, url.searchParams);
     return await handleStatic(req, res, url.pathname);
   } catch (err) {
     console.error(err);

@@ -111,8 +111,8 @@
         }
       }
       for (const providers of Object.values(state.watchProviders)) {
-        for (const name of providers) {
-          if (!state.providerIndex.has(name.toLowerCase())) state.providerIndex.set(name.toLowerCase(), name);
+        for (const p of providers.flatrate || []) {
+          if (!state.providerIndex.has(p.name.toLowerCase())) state.providerIndex.set(p.name.toLowerCase(), p.name);
         }
       }
 
@@ -222,8 +222,8 @@
     if (tag.type === "streaming") {
       const key = `${movie.t.toLowerCase()}|${movie.y}`;
       const providers = state.watchProviders[key];
-      if (!providers) return false;
-      return providers.some((p) => p.toLowerCase().includes(tag.matchTerm));
+      if (!providers || !providers.flatrate) return false;
+      return providers.flatrate.some((p) => p.name.toLowerCase().includes(tag.matchTerm));
     }
     if (tag.type === "runtime") {
       if (!movie.rt) return false; // no data — can't confirm it fits, so exclude
@@ -326,22 +326,7 @@
     return d.innerHTML;
   }
 
-  /* ---------- live TMDB details (overview + watch providers) ---------- */
-  async function fetchLiveDetails(movie) {
-    try {
-      const res = await fetch(`/api/movie-details?title=${encodeURIComponent(movie.t)}&year=${movie.y}`);
-      if (res.status !== 200) return; // API server unreachable — keep static data
-      const data = await res.json();
-      if (!data.found) return;
-
-      if (data.overview) el("ticket-overview").textContent = data.overview;
-      renderRatings(data.ratings, "ratings-row");
-      renderWatchProviders(data.watchProviders, "watch-providers", "watch-badges");
-    } catch (err) {
-      // silently keep the static bundled overview
-    }
-  }
-
+  /* ---------- ratings + watch providers (baked into the static data — no live API calls) ---------- */
   function renderRatings(ratings, rowId) {
     const row = el(rowId);
     if (!ratings) { row.hidden = true; return; }
@@ -394,8 +379,10 @@
     el("ticket-meta").textContent = `${movie.y}` + (movie.rt ? ` · ${movie.rt} min` : "");
     el("ticket-tags").innerHTML = movie.g.map((g) => `<span class="tag">${g}</span>`).join("");
     el("ticket-overview").textContent = movie.o || "No synopsis available.";
-    el("ratings-row").hidden = true;
-    el("watch-providers").hidden = true;
+
+    renderRatings(movie.rr, "ratings-row");
+    const key = `${movie.t.toLowerCase()}|${movie.y}`;
+    renderWatchProviders(state.watchProviders[key], "watch-providers", "watch-badges");
 
     const posterEl = el("ticket-poster");
     if (posterEl) {
@@ -410,8 +397,6 @@
     tagZone.hidden = true;
     resultsZone.hidden = true;
     panelPicked.hidden = false;
-
-    fetchLiveDetails(movie);
   }
 
   function backToList() {

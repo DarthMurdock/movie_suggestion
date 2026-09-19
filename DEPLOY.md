@@ -1,15 +1,23 @@
 # Deploying: self-hosted on a Raspberry Pi
 
 Everything — the static Finder/Calendar/Admin pages *and* the live
-"Save & publish" / TMDB lookup backend — is served by one self-contained
-process: `server.js`, managed by systemd, exposed to the internet via
-Cloudflare Tunnel (no ports opened on your router, no port-forwarding/DDNS
-needed).
+"Save & publish" admin backend — is served by one self-contained process:
+`server.js`, managed by systemd, exposed to the internet via Cloudflare
+Tunnel (no ports opened on your router, no port-forwarding/DDNS needed).
 
 There's no nginx or other reverse proxy involved — this project turned out
 to not need one. `server.js` binds only to `127.0.0.1`; `cloudflared`
 (already running on this Pi for your other site) reaches it over loopback
 and is the only path in from the outside.
+
+**The live server makes zero calls to TMDB or OMDb.** Movie overviews,
+ratings, streaming availability, and runtime are all baked directly into
+`data/movies.json` and `data/watch-providers.json` by separate batch
+scripts (`grow-catalog.js`, `backfill-ratings.js`,
+`refresh-watch-providers.js`, `backfill-runtime.js`), run manually or on a
+schedule — not triggered by visitor traffic. That means a traffic spike
+can't exhaust an API quota or hammer an external service; API usage only
+happens when *you* choose to run one of those scripts.
 
 ## 1. Check Node version
 
@@ -71,8 +79,6 @@ sudo tee /etc/movie-finder/env << 'EOF'
 ADMIN_USERNAME=your-username
 ADMIN_SECRET=your-password
 TOTP_SECRET=the-base32-secret-from-above
-TMDB_API_KEY=your-tmdb-api-key
-OMDB_API_KEY=your-omdb-api-key
 DATA_DIR=/var/lib/movie-finder
 PORT=3001
 HOST=127.0.0.1
@@ -84,9 +90,10 @@ That `chmod 600` matters — it's the only thing protecting your secrets on
 disk, so only root (and the service, via systemd's `EnvironmentFile=`,
 which reads it before dropping privileges) can read it.
 
-`OMDB_API_KEY` (get one free at omdbapi.com/apikey.aspx) is optional —
-it adds IMDb/Rotten Tomatoes/Metacritic scores to each movie's detail
-card. Leave it out and everything else still works, just without ratings.
+Notice `TMDB_API_KEY`/`OMDB_API_KEY` aren't here — the live service
+doesn't need them at all anymore. They're only used by the batch scripts
+below, passed inline on the command line when you actually run one
+(`TMDB_API_KEY=... node grow-catalog.js`, etc.), not read from this file.
 
 **Worth knowing:** after 5 failed login attempts (wrong password, wrong
 code, anything), the server blocks *all* further attempts — including
@@ -242,13 +249,53 @@ git commit -m "Backfill runtime for the full catalog"
 git push
 ```
 
-## Streaming service search (monthly refresh job)
+## Ratings (daily backfill job, until fully caught up)
 
-Typing a streaming service name (e.g. "Netflix") into the finder searches
-against `data/watch-providers.json` — a mapping of which movies are
-currently streaming where, built by `refresh-watch-providers.js`. This
-file doesn't exist until you run that script at least once; until then,
-service names just get treated as regular search words instead.
+`backfill-ratings.js` bakes IMDb/Rotten Tomatoes/Metacritic scores
+directly into `data/movies.json` (as `movie.rr`), the same way runtime
+gets backfilled — once baked in, the live site never calls OMDb to show
+them. Skips movies that already have ratings, so it's safe to re-run.
+
+**OMDb's free tier caps at 1,000 requests/day.** For a catalog with tens
+of thousands of movies, one run won't cover everything — the script
+detects when it's hit the daily limit and stops cleanly rather than
+wasting the rest of its list on failed requests:
+
+```bash
+cd /var/www/movie-finder
+sudo env OMDB_API_KEY=your-omdb-key nohup node backfill-ratings.js > ~/ratings.log 2>&1 &
+```
+
+Since this needs to run repeatedly until the whole catalog is covered,
+set it up as a **daily cron job** rather than running it by hand each day:
+
+```bash
+sudo crontab -e
+```
+
+```
+0 4 * * * OMDB_API_KEY=your-omdb-key /usr/bin/node /var/www/movie-finder/backfill-ratings.js >> /var/log/movie-finder-ratings.log 2>&1
+```
+
+Once the whole catalog has ratings, it'll naturally have nothing left to
+do each day (a fast no-op) — you can leave the cron job running
+indefinitely so any newly-added movies (from `grow-catalog.js`) pick up
+ratings automatically too, or remove it once you're confident everything's
+covered.
+
+Copy the updated file back to your source and commit the same way as the
+runtime backfill above.
+
+## Streaming availability (monthly refresh job)
+
+`data/watch-providers.json`, built by `refresh-watch-providers.js`, does
+double duty: it's what the finder's streaming-service search (typing
+"Netflix") matches against, *and* what powers the "Where to watch"
+section on each movie's ticket — that used to be a live TMDB call per
+visit, now it's baked in the same way. This file doesn't exist until you
+run the script at least once; until then, streaming search just treats
+service names as regular search words, and tickets simply don't show a
+"Where to watch" section.
 
 **First run** (takes roughly 60-100 minutes for the full ~9,800-movie
 catalog — TMDB rate-limits requests, so this can't go faster):
