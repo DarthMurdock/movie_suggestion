@@ -18,6 +18,17 @@
 const fs = require("fs/promises");
 const path = require("path");
 
+// Writes atomically: to a temp file first, then rename()s it into place —
+// a filesystem-guaranteed all-or-nothing swap. Protects against a crash
+// or kill mid-write leaving this file truncated and unparseable, which
+// would otherwise take down the whole site until manually fixed.
+async function atomicWriteFile(filePath, content) {
+  const tmpPath = `${filePath}.tmp-${process.pid}`;
+  await fs.writeFile(tmpPath, content);
+  await fs.rename(tmpPath, filePath);
+}
+
+
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const DELAY_MS = 300; // ~3.3 req/sec, safely under TMDB's limit
 const CHECKPOINT_EVERY = 250;
@@ -178,8 +189,8 @@ async function main() {
         }
 
         if (addedSinceCheckpoint >= CHECKPOINT_EVERY) {
-          await fs.writeFile(MOVIES_FILE, JSON.stringify(movies));
-          await fs.writeFile(PROVIDERS_FILE, JSON.stringify(watchProviders));
+          await atomicWriteFile(MOVIES_FILE, JSON.stringify(movies));
+          await atomicWriteFile(PROVIDERS_FILE, JSON.stringify(watchProviders));
           console.log(`  ...${totalAdded} added so far (checkpoint saved, ${totalSkippedDupes} dupes skipped, ${totalFailed} failed)`);
           addedSinceCheckpoint = 0;
         }
@@ -189,8 +200,8 @@ async function main() {
     }
   }
 
-  await fs.writeFile(MOVIES_FILE, JSON.stringify(movies));
-  await fs.writeFile(PROVIDERS_FILE, JSON.stringify(watchProviders));
+  await atomicWriteFile(MOVIES_FILE, JSON.stringify(movies));
+  await atomicWriteFile(PROVIDERS_FILE, JSON.stringify(watchProviders));
   console.log(`Done. Added ${totalAdded} new movies (${movies.length} total). Skipped ${totalSkippedDupes} already-present, ${totalFailed} failed lookups.`);
 }
 

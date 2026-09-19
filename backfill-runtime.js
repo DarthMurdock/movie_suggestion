@@ -11,6 +11,17 @@
 const fs = require("fs/promises");
 const path = require("path");
 
+// Writes atomically: to a temp file first, then rename()s it into place —
+// a filesystem-guaranteed all-or-nothing swap. Protects against a crash
+// or kill mid-write leaving this file truncated and unparseable, which
+// would otherwise take down the whole site until manually fixed.
+async function atomicWriteFile(filePath, content) {
+  const tmpPath = `${filePath}.tmp-${process.pid}`;
+  await fs.writeFile(tmpPath, content);
+  await fs.rename(tmpPath, filePath);
+}
+
+
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const DELAY_MS = 300; // ~3.3 req/sec, safely under TMDB's limit
 const CHECKPOINT_EVERY = 200;
@@ -68,12 +79,12 @@ async function main() {
     await sleep(DELAY_MS);
 
     if (processed % CHECKPOINT_EVERY === 0) {
-      await fs.writeFile(MOVIES_FILE, JSON.stringify(movies));
+      await atomicWriteFile(MOVIES_FILE, JSON.stringify(movies));
       console.log(`  ...${processed}/${needsRuntime.length} processed, ${filled} filled in so far (checkpoint saved)`);
     }
   }
 
-  await fs.writeFile(MOVIES_FILE, JSON.stringify(movies));
+  await atomicWriteFile(MOVIES_FILE, JSON.stringify(movies));
   console.log(`Done. Filled runtime for ${filled} of ${needsRuntime.length} movies that were missing it. Saved to ${MOVIES_FILE}`);
 }
 

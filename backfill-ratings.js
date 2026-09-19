@@ -17,6 +17,17 @@
 const fs = require("fs/promises");
 const path = require("path");
 
+// Writes atomically: to a temp file first, then rename()s it into place —
+// a filesystem-guaranteed all-or-nothing swap. Protects against a crash
+// or kill mid-write leaving this file truncated and unparseable, which
+// would otherwise take down the whole site until manually fixed.
+async function atomicWriteFile(filePath, content) {
+  const tmpPath = `${filePath}.tmp-${process.pid}`;
+  await fs.writeFile(tmpPath, content);
+  await fs.rename(tmpPath, filePath);
+}
+
+
 const DELAY_MS = 300;
 const CHECKPOINT_EVERY = 200;
 const DAILY_LIMIT_STOP_THRESHOLD = 5; // stop after this many consecutive "limit exceeded" responses
@@ -93,12 +104,12 @@ async function main() {
     await sleep(DELAY_MS);
 
     if (processed % CHECKPOINT_EVERY === 0) {
-      await fs.writeFile(MOVIES_FILE, JSON.stringify(movies));
+      await atomicWriteFile(MOVIES_FILE, JSON.stringify(movies));
       console.log(`  ...${processed}/${needsRatings.length} processed, ${filled} filled in so far (checkpoint saved)`);
     }
   }
 
-  await fs.writeFile(MOVIES_FILE, JSON.stringify(movies));
+  await atomicWriteFile(MOVIES_FILE, JSON.stringify(movies));
   if (stoppedEarly) {
     console.log(`Stopped early due to OMDb's daily limit. Filled ${filled} of ${needsRatings.length} that were missing ratings this run. Saved to ${MOVIES_FILE}`);
   } else {

@@ -370,10 +370,18 @@
     }
   }
 
+  // Plain string replacement rather than the textContent/innerHTML DOM
+  // trick — that trick only escapes what's unsafe in a text NODE (<, >,
+  // &), not quote characters, which makes it unsafe wherever the result
+  // gets used inside an attribute value (title=, alt=, etc.) rather than
+  // as text content. This covers both.
   function escapeHtml(str) {
-    const d = document.createElement("div");
-    d.textContent = str;
-    return d.innerHTML;
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   /* ---------- ratings + watch providers (baked into the static data — no live API calls) ---------- */

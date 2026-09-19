@@ -17,6 +17,17 @@
 const fs = require("fs/promises");
 const path = require("path");
 
+// Writes atomically: to a temp file first, then rename()s it into place —
+// a filesystem-guaranteed all-or-nothing swap. Protects against a crash
+// or kill mid-write leaving this file truncated and unparseable, which
+// would otherwise take down the whole site until manually fixed.
+async function atomicWriteFile(filePath, content) {
+  const tmpPath = `${filePath}.tmp-${process.pid}`;
+  await fs.writeFile(tmpPath, content);
+  await fs.rename(tmpPath, filePath);
+}
+
+
 const STATIC_DIR = process.env.STATIC_DIR || path.join(__dirname);
 const FILE = path.join(STATIC_DIR, "data", "watch-providers.json");
 
@@ -40,7 +51,7 @@ async function main() {
     }
   }
 
-  await fs.writeFile(FILE, JSON.stringify(data));
+  await atomicWriteFile(FILE, JSON.stringify(data));
   console.log(`Migrated ${migrated} entries to the current format (${alreadyCurrent} were already current). Saved to ${FILE}`);
 }
 

@@ -128,7 +128,7 @@
       if (isSameDate(date, today)) cell.classList.add("is-today");
       if (isSameDate(date, state.selectedDate)) cell.classList.add("is-selected");
 
-      cell.innerHTML = `<span class="day-num">${d}</span>` + (rule ? `<span class="day-theme-dot" title="${rule.label}"></span>` : "");
+      cell.innerHTML = `<span class="day-num">${d}</span>` + (rule ? `<span class="day-theme-dot" title="${escapeHtml(rule.label)}"></span>` : "");
       cell.addEventListener("click", () => {
         state.selectedDate = date;
         state.shuffleOffset = 0;
@@ -223,10 +223,18 @@
     section.hidden = false;
   }
 
+  // Plain string replacement rather than the textContent/innerHTML DOM
+  // trick — that trick only escapes what's unsafe in a text NODE (<, >,
+  // &), not quote characters, which makes it unsafe wherever the result
+  // gets used inside an attribute value (title=, alt=, etc.) rather than
+  // as text content. This covers both.
   function escapeHtml(str) {
-    const d = document.createElement("div");
-    d.textContent = str;
-    return d.innerHTML;
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   init();

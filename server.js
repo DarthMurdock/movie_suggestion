@@ -115,8 +115,15 @@ async function readRules() {
   }
 }
 
+// Writes atomically: to a temp file first, then rename()s it into place —
+// a filesystem-guaranteed all-or-nothing swap. Protects against this
+// always-running process getting killed (power loss, OOM, a systemd
+// restart) mid-write, which would otherwise leave the calendar config
+// truncated and unparseable until manually fixed.
 async function writeRules(data) {
-  await fs.writeFile(RULES_FILE, JSON.stringify(data));
+  const tmpPath = `${RULES_FILE}.tmp-${process.pid}`;
+  await fs.writeFile(tmpPath, JSON.stringify(data));
+  await fs.rename(tmpPath, RULES_FILE);
 }
 
 /* ---------- HTTP response helpers ---------- */
