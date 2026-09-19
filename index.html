@@ -31,6 +31,14 @@
       <button type="submit" class="btn-primary">Add</button>
     </form>
     <p class="tag-hint">Try genres like <em>comedy</em>, decades like <em>80s</em>, a mood like <em>supernatural</em>, or a streaming service like <em>Netflix</em>.</p>
+
+    <div class="runtime-filter" role="group" aria-label="Runtime">
+      <span class="runtime-filter-label">Runtime</span>
+      <button type="button" class="runtime-btn" data-min="0" data-max="89">Under 90 min</button>
+      <button type="button" class="runtime-btn" data-min="90" data-max="120">90–120 min</button>
+      <button type="button" class="runtime-btn" data-min="121" data-max="9999">120+ min</button>
+    </div>
+
     <div id="tag-list" class="tag-list" aria-label="Active keywords"></div>
   </section>
 

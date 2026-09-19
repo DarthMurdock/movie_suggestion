@@ -220,6 +220,10 @@
       const providers = state.watchProviders[key];
       return !!(providers && providers.includes(tag.value));
     }
+    if (tag.type === "runtime") {
+      if (!movie.rt) return false; // no data — can't confirm it fits, so exclude
+      return movie.rt >= tag.min && movie.rt <= tag.max;
+    }
     // text — search title, overview, cast/director names, and TMDB keyword tags together
     const hay = `${movie.t} ${movie.o} ${movie.c ? movie.c.join(" ") : ""} ${movie.d ? movie.d.join(" ") : ""} ${movie.k ? movie.k.join(" ") : ""}`.toLowerCase();
     // Exact phrase fast path — catches curated keyword-array phrases like "time travel" directly.
@@ -240,7 +244,8 @@
   /* ---------- render ---------- */
   function renderTags() {
     tagListEl.innerHTML = "";
-    state.tags.forEach((tag, i) => {
+    state.tags.filter((tag) => tag.type !== "runtime").forEach((tag) => {
+      const i = state.tags.indexOf(tag);
       const chip = document.createElement("span");
       chip.className = "tag-chip";
       const kindLabel = tag.type === "decade" ? "era" : tag.type === "genre" ? "genre" : tag.type === "actor" ? "actor" : tag.type === "director" ? "director" : tag.type === "streaming" ? "streaming" : "mood";
@@ -260,6 +265,7 @@
 
   function render() {
     renderTags();
+    syncRuntimeButtons();
 
     if (state.tags.length === 0) {
       stateStart.hidden = false;
@@ -409,6 +415,30 @@
   }
 
   /* ---------- events ---------- */
+  function syncRuntimeButtons() {
+    const active = state.tags.find((t) => t.type === "runtime");
+    document.querySelectorAll(".runtime-btn").forEach((btn) => {
+      const isThisOne = active && Number(btn.dataset.min) === active.min && Number(btn.dataset.max) === active.max;
+      btn.classList.toggle("is-active", !!isThisOne);
+    });
+  }
+
+  document.querySelectorAll(".runtime-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const min = Number(btn.dataset.min);
+      const max = Number(btn.dataset.max);
+      const existingIndex = state.tags.findIndex((t) => t.type === "runtime");
+      const alreadyThisOne = existingIndex !== -1 && state.tags[existingIndex].min === min && state.tags[existingIndex].max === max;
+
+      if (existingIndex !== -1) state.tags.splice(existingIndex, 1); // remove any existing runtime tag first
+
+      if (!alreadyThisOne) {
+        state.tags.push({ type: "runtime", min, max, label: btn.textContent });
+      }
+      render();
+    });
+  });
+
   tagForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const tag = parseTag(tagInput.value);

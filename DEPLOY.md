@@ -169,6 +169,33 @@ pages load, and confirm the admin login (username + password + current
 - The **"download a local backup file"** link still works as a manual
   export/import option if you ever want a snapshot outside that file.
 
+## Runtime data (one-time backfill)
+
+Only ~2,800 of the ~9,800 movies ship with runtime out of the box. Unlike
+streaming availability, runtime never changes once set, so this is a
+one-time job, not a recurring one — `backfill-runtime.js` fills in
+whatever's missing and writes straight back into `data/movies.json`. Skips
+anything that already has runtime, so it's safe to re-run later if you
+ever add more movies to the catalog.
+
+```bash
+cd /var/www/movie-finder
+TMDB_API_KEY=your-tmdb-key node backfill-runtime.js
+```
+
+Takes roughly 45-70 minutes for the ~7,000 movies currently missing it —
+same `nohup`/background-process approach as the streaming refresh job
+works well here too. Once it's done, copy the updated file back to your
+source directory and commit it:
+
+```bash
+cp /var/www/movie-finder/data/movies.json /mnt/PI_Projects/movie-finder-v2/data/movies.json
+cd /mnt/PI_Projects/movie-finder-v2
+git add data/movies.json
+git commit -m "Backfill runtime for the full catalog"
+git push
+```
+
 ## Streaming service search (monthly refresh job)
 
 Typing a streaming service name (e.g. "Netflix") into the finder searches
