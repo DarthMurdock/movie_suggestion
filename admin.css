@@ -165,8 +165,21 @@
   height: 1.8rem;
   cursor: pointer;
   flex-shrink: 0;
+  position: relative;
 }
 .remove-btn:hover{ border-color: var(--red-dim); color: var(--red); }
+/* Invisible expanded hit area, same reasoning as the finder's tag-chip
+   remove buttons — bigger tap target without visually bulking up the
+   button, biased into the row's own body since rows are only 0.5rem
+   apart and a symmetric expansion would spill into the next one. */
+.remove-btn::before{
+  content: "";
+  position: absolute;
+  top: -0.3rem;
+  bottom: -0.3rem;
+  left: -2rem;
+  right: -0.3rem;
+}
 
 .download-btn{
   display: block;

@@ -23,6 +23,43 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const WATCH_REGION = "US";
 
+const MAX_BODY_BYTES = 1024 * 1024; // 1MB — calendar-rules payloads are tiny JSON; generous headroom
+
+// Simple global (not per-IP) rate limit on failed admin logins. Not
+// distributed, not IP-aware (IP headers behind a tunnel aren't fully
+// trustworthy anyway) — just enough to stop naive automated guessing.
+// One real tradeoff: enough failed attempts from anyone temporarily locks
+// out the real admin too. Acceptable here since this is a single-admin
+// personal site, not a multi-tenant service.
+const MAX_FAILED_ATTEMPTS = 5;
+const FAILED_ATTEMPT_WINDOW_MS = 5 * 60 * 1000;
+let failedAttempts = [];
+
+function isLoginRateLimited() {
+  const now = Date.now();
+  failedAttempts = failedAttempts.filter((t) => now - t < FAILED_ATTEMPT_WINDOW_MS);
+  return failedAttempts.length >= MAX_FAILED_ATTEMPTS;
+}
+
+function recordFailedLogin() {
+  failedAttempts.push(Date.now());
+}
+
+function clearFailedLogins() {
+  failedAttempts = [];
+}
+
+// Constant-time string comparison, via fixed-length hash digests rather
+// than the raw values — crypto.timingSafeEqual throws on mismatched
+// buffer lengths, so comparing raw strings of different lengths directly
+// isn't safe. Hashing first sidesteps that while keeping the comparison
+// itself timing-safe.
+function timingSafeStringEqual(a, b) {
+  const bufA = crypto.createHash("sha256").update(String(a)).digest();
+  const bufB = crypto.createHash("sha256").update(String(b)).digest();
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 /* ---------- TOTP (RFC 6238) — same proven implementation as before ---------- */
 
 function base32Decode(b32) {
@@ -98,11 +135,12 @@ async function writeCache(key, value) {
 
 /* ---------- HTTP response helpers ---------- */
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type, X-Admin-Secret, X-Admin-Username",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-};
+// No CORS headers here at all — deliberately. Our own frontend calls these
+// routes from the same origin, which never needs CORS in the first place
+// (that only governs cross-origin requests). Dropping this entirely means
+// no other website's JS can call this API on a visitor's behalf; there's
+// no legitimate cross-origin use case for a single-tenant personal site.
+const CORS_HEADERS = {};
 
 function sendJson(res, status, obj) {
   const body = JSON.stringify(obj);
@@ -118,8 +156,21 @@ function sendEmpty(res, status) {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on("data", (c) => chunks.push(c));
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    let size = 0;
+    let tooLarge = false;
+    req.on("data", (c) => {
+      size += c.length;
+      if (size > MAX_BODY_BYTES) {
+        tooLarge = true;
+        chunks.length = 0; // stop holding onto data we're going to reject anyway
+        return;
+      }
+      if (!tooLarge) chunks.push(c);
+    });
+    req.on("end", () => {
+      if (tooLarge) return reject(new Error("body too large"));
+      resolve(Buffer.concat(chunks).toString("utf8"));
+    });
     req.on("error", reject);
   });
 }
@@ -142,15 +193,28 @@ async function handleCalendarRules(req, res) {
       return sendJson(res, 500, { error: "ADMIN_USERNAME, ADMIN_SECRET, and TOTP_SECRET must all be configured on the server." });
     }
 
-    const providedUser = req.headers["x-admin-username"];
-    const providedSecret = req.headers["x-admin-secret"];
-    if (providedUser !== username || providedSecret !== secret) {
+    if (isLoginRateLimited()) {
+      return sendJson(res, 429, { error: "Too many failed attempts. Try again in a few minutes." });
+    }
+
+    const providedUser = req.headers["x-admin-username"] || "";
+    const providedSecret = req.headers["x-admin-secret"] || "";
+    const credentialsOk = timingSafeStringEqual(providedUser, username) && timingSafeStringEqual(providedSecret, secret);
+    if (!credentialsOk) {
+      recordFailedLogin();
       return sendJson(res, 401, { error: "Unauthorized" });
+    }
+
+    let bodyText;
+    try {
+      bodyText = await readBody(req);
+    } catch (err) {
+      return sendJson(res, 413, { error: "Request body too large." });
     }
 
     let payload;
     try {
-      payload = JSON.parse(await readBody(req));
+      payload = JSON.parse(bodyText);
     } catch (err) {
       return sendJson(res, 400, { error: "Invalid JSON body" });
     }
@@ -158,8 +222,10 @@ async function handleCalendarRules(req, res) {
     if (payload && payload.verifyOnly === true) {
       const code = String(payload.totp || "").trim();
       if (!isValidTotp(totpSecret, code)) {
+        recordFailedLogin();
         return sendJson(res, 401, { error: "Invalid or expired authentication code." });
       }
+      clearFailedLogins();
       return sendJson(res, 200, { ok: true });
     }
 
@@ -167,6 +233,7 @@ async function handleCalendarRules(req, res) {
       return sendJson(res, 400, { error: "Payload missing expected 'rules' array or 'overrides' object." });
     }
 
+    clearFailedLogins();
     await writeRules(payload);
     return sendJson(res, 200, { ok: true });
   }

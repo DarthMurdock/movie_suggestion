@@ -88,6 +88,13 @@ which reads it before dropping privileges) can read it.
 it adds IMDb/Rotten Tomatoes/Metacritic scores to each movie's detail
 card. Leave it out and everything else still works, just without ratings.
 
+**Worth knowing:** after 5 failed login attempts (wrong password, wrong
+code, anything), the server blocks *all* further attempts — including
+correct ones — for 5 minutes. This is a basic guard against automated
+password/code guessing. It resets on your next successful login. If you
+lock yourself out by fumbling your own password a few times, the fix is
+just waiting 5 minutes, not a config problem.
+
 ## 5. Set up the systemd service
 
 ```bash

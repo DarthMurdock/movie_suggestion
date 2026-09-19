@@ -254,7 +254,7 @@
       const chip = document.createElement("span");
       chip.className = "tag-chip";
       const kindLabel = tag.type === "decade" ? "era" : tag.type === "genre" ? "genre" : tag.type === "actor" ? "actor" : tag.type === "director" ? "director" : tag.type === "streaming" ? "streaming" : "mood";
-      chip.innerHTML = `<span class="tag-kind">${kindLabel}</span>${tag.label}`;
+      chip.innerHTML = `<span class="tag-kind">${kindLabel}</span>${escapeHtml(tag.label)}`;
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.setAttribute("aria-label", `Remove ${tag.label}`);

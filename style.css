@@ -246,8 +246,22 @@ body{
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 .tag-chip button:hover{ background: rgba(26,21,9,0.3); }
+/* Invisible expanded hit area — keeps the visible × small and tidy while
+   making the actual tappable region meaningfully bigger. Expands mostly
+   inward into the chip's own body (harmless) rather than symmetrically,
+   since a full 44px radius here would spill into neighboring chips —
+   they're only 0.5rem apart in a wrapped row. */
+.tag-chip button::before{
+  content: "";
+  position: absolute;
+  top: -0.5rem;
+  bottom: -0.5rem;
+  left: -1.3rem;
+  right: -0.3rem;
+}
 
 /* ========================================================
    Results zone
